@@ -1,7 +1,7 @@
 # Project Ring — Planning Document
 
 **Owner:** Abhi
-**Status:** Models selected (1× Ruofine R10, 2× Ruofine R09) — order pending final size confirmation
+**Status:** Framework phase — hardware purchase deferred (funding). Hub, repo, parsers, and dashboard proceed with $0. Models locked: 1× Ruofine R10 sz 10, 2× Ruofine R09 sz 9.
 **Last updated:** July 11, 2026
 
 ---
@@ -29,6 +29,29 @@ QRing-family rings            Hub (2014 MBA, Linux Mint)         Viewers
 - Hub serves the dashboard as an installable PWA; Tailscale provides secure remote access with no port forwarding and no third-party data storage.
 - Firmware path: **stock firmware first (Path A)**, validated app pipeline, then **custom firmware (Path B)** in Phase 3 behind a stable GATT interface contract so the app layer never changes.
 - **Two chipsets in the fleet:** the R09s are RF03-class (BlueX, Cortex-M0) — the ATC_RF03 custom firmware groundwork applies. The R10 (DAILY) is Realtek RTL8762-based — it stays on stock firmware permanently; all Phase 3 work targets the R09s only. All three speak the QRing protocol, so the hub pipeline is shared; expect minor per-model parser variations.
+
+### 2.1 The Travel Protocol — satellite collector for the second location
+
+Problem: frequent stays in Mississauga exceed dashboard *freshness* (ring buffers onboard, ~days) even though no data is lost on typical trips. Solution: a permanently deployed satellite collector at the second location.
+
+```
+Ring (in Mississauga)          ESP32-C3 satellite            Hub (Montreal)
++---------------+    BLE      +--------------------+  HTTPS  +------------------+
+| Onboard log   | ----------> | NimBLE central     | ------> | /ingest endpoint |
++---------------+             | Raw payload buffer |  POST   | (Tailscale Funnel|
+                              | WiFi + HTTP client |  +token | + bearer token)  |
+                              +--------------------+         | Python parsers   |
+                                                             | as usual         |
+                                                             +------------------+
+```
+
+Design rules:
+- **Dumb radio, smart hub.** The satellite pulls *raw* sync payloads over BLE and forwards them unparsed. All protocol parsing stays in the hub's Python — single implementation of protocol truth. Satellite firmware ≈ NimBLE central + HTTP client, a few hundred lines of C (ESP-IDF).
+- **Connectivity:** ESP32 cannot join the Tailnet (no Tailscale client). The hub exposes *only* the `/ingest` route publicly via **Tailscale Funnel** (TLS via Tailscale relay, no port forwarding), locked with a bearer token. Dashboard and all other routes remain Tailnet-only. Alternative if a fully closed system is ever wanted: `esp_wireguard` point-to-point tunnel.
+- **Ring buffer is sacred:** the satellite must receive hub acknowledgment of a payload before performing any operation that could mark the ring's onboard log as delivered. If WiFi/hub is unreachable, the satellite does not pull.
+- **Idempotency holds end to end:** the hub's ingest dedupes by timestamp exactly like local syncs, so satellite and hub can both hear the ring with no double-counting.
+- Deployment: ESP32-C3 on a USB wall adapter in Mississauga. ESP32-WROOM-32 boards serve as the at-home development testbed — the entire Travel Protocol is built and tested in Montreal before deployment.
+- Strategic bonus: implementing a QRing BLE central in C on ESP-IDF is a low-risk rehearsal for Phase 3 (same protocol, same GATT services, debuggable hardware, nothing brickable).
 
 ## 3. Metrics — scope and source mapping
 
@@ -75,33 +98,54 @@ Numbering note: 16–19 remain reserved for the deferred composite scores (16 sl
 - Desktop PC — development machine, Claude Code host.
 - iPhone — primary dashboard viewer (PWA).
 - iPad Air — secondary viewer; optional Swift Playgrounds native app side quest.
+- **ESP32-C3** — the Travel Protocol satellite. Development target *and* deployment unit (built-in USB Serial/JTAG: flash, monitor, debug over one cable). Must carry OTA self-update before deploying to Mississauga.
+- **ESP32-WROOM-32 dev boards** — drawer spares / fallback; general BLE experimentation.
 
 ### Software / services (all free)
 - Python 3.12+, `bleak`, `colmi_r02_client` (reference), pytest, FastAPI, SQLite
 - Chart.js (dashboard skeleton; frontend design offloaded to Claude Code)
 - nRF Connect (iOS/Android) — BLE inspection
-- Tailscale (free tier) — secure remote dashboard access
+- Tailscale (free tier) — secure remote dashboard access; **Tailscale Funnel** for the satellite's token-locked `/ingest` route
+- ESP-IDF + NimBLE — Travel Protocol satellite firmware (C/C++)
 - OBS / asciinema — screen and terminal capture for the video
 - ATC_RF03 tooling (github.com/atc1441/ATC_RF03_Ring) + web OTA flasher — Phase 3
 - BlueX RF03 SDK + datasheet — Phase 3
 
 ## 5. Phase plan (calibrated to ~5h dev + ~2h documentation per week)
 
-### Phase 0 — Order, recon, and pre-hardware development (Weeks 0–3)
-Shipping is the critical path — order immediately after sizing. Shipping weeks are not idle:
-- Week 0: jeweler sizing → order 3 rings. Set up monorepo: `protocol/`, `hub/`, `dashboard/`, `firmware/`, `notebook.md`. First notebook entry same day.
-- Weeks 1–2 (hardware in transit): study published protocol docs; build packet parsers against community-published captures; pytest suite with JSON test vectors; SQLite schema draft.
-- Week 3 (arrival): label units; pair HERO with the stock QRing app briefly (reference oracle + footage); nRF Connect GATT enumeration on both DEV (R09) and DAILY (R10) — capture and diff their service tables, since the two chipsets may expose protocol variations; first successful sync from the hub via Python.
-- **Exit criteria:** parsers pass fixture suite; one real sync lands rows in SQLite.
+### Phase 0a — Zero-hardware framework ($0, start now)
+No purchase required; ~70% of the build happens here. Sequence:
+- **Hub build-out** (see HUB_SETUP.md): lid-closed 24/7 operation, SSH, Bluetooth verified, Python env, Tailscale, systemd service pattern. General-purpose home server from day one.
+- **Monorepo setup:** `protocol/`, `hub/`, `dashboard/`, `firmware/`, `notebook.md`. First notebook entry same day. Documentation set (PLAN, RESOURCES, HUB_SETUP) lives at the root.
+- **Parsers first:** packet parsers built against community-published captures (colmi_r02_client + Gadgetbridge sources per RESOURCES.md); pytest suite with JSON test vectors from day one.
+- **Synthetic-data generator:** a script producing realistic fake sleep/HR/SpO2/step/temperature rows into SQLite. This unlocks the entire downstream stack without hardware.
+- **Full pipeline on fake data:** SQLite schema → analytics rollups → FastAPI → Chart.js PWA installed on the iPhone via Tailscale. The dashboard reaches near-final state against synthetic data.
+- **Exit criteria:** hub passes its verification checklist; parsers pass the fixture suite; the PWA on the iPhone shows a (synthetic) week of sleep and activity.
 
-### Phase 1+2 — Hub pipeline and dashboard (Weeks 4–9)
-- Weeks 4–5: systemd sync service (auto-detect ring in range, pull onboard log, dedupe, store). Metrics 1–4, 8, 11–12 flowing.
-- Weeks 6–7: analytics layer — daily/weekly/monthly rollups, sleep session detection, stage estimation (13–14), activity bucketing (10), calorie model (9), workout detection heuristic (15).
-- Weeks 8–9: FastAPI + Chart.js PWA. Skeleton first; iterate layout via Claude Code with Abhi's input. Install to iPhone home screen; Tailscale for remote access.
+### Phase 0b — Purchase and hardware bring-up (gated on funds)
+- Confirm size 10, verify QRing on both listings, order (1× R10 sz 10, 2× R09 sz 9). Shipping ~1–3 weeks — dead time absorbed by remaining 0a work.
+- Arrival: label units (DEV opened without ceremony per the two-pass production model; HERO stays sealed; DAILY charged and worn); pair DEV with the stock QRing app briefly (reference oracle); nRF Connect GATT enumeration on DEV (R09) and DAILY (R10) — capture and diff their service tables; first real sync from the hub.
+- Integration is thin by design: point the tested sync service at real MAC addresses; real rows replace synthetic ones.
+- **Exit criteria:** one real overnight of sleep data renders on the dashboard.
+
+### Phase 1+2 — Real-data pipeline and dashboard hardening (weeks clocked from hardware arrival)
+Much of the original scope lands early in Phase 0a against synthetic data; this phase converts it to real data and fixes what reality breaks.
+- Weeks 1–2: sync service against real rings (auto-detect in range, pull onboard log, dedupe, store). Metrics 1–5, 8, 11–12, 20 flowing. Parser fixes for R09/R10 protocol deltas found in enumeration.
+- Weeks 3–4: analytics against real data — recalibrate sleep session detection, stage estimation (13–14), activity bucketing (10), calorie model (9), workout heuristic (15), temperature baseline (21).
+- Weeks 5–6: dashboard iteration with real data on screen; layout refinement via Claude Code with Abhi's input.
 - **Exit criteria:** wake up → coffee → glance at phone → last night's sleep and yesterday's activity are just *there*, no user action.
 
 ### Interlude — Composite score design (Week ~10)
 Two weeks of personal baseline data now exist. Design sleep score and readiness formulas as weighted blends vs. personal baselines. Ship v1, tune over time.
+
+### Parallel track — Travel Protocol (starts any time after Phase 1+2 stabilizes; Phase 3 rehearsal)
+Prereq: real rings on hand (BLE development needs a real peripheral); hub ingest endpoint live. Development happens directly on the ESP32-C3 (deployment target; built-in USB Serial/JTAG gives flash + monitor + debug over one cable). WROOM-32 boards are drawer spares / fallback only.
+1. Hub side (Python, one session): `/ingest` route accepting raw payloads; reuse existing parsers + dedupe; expose via Tailscale Funnel with bearer token.
+2. C3 firmware at home: NimBLE central connects to DEV ring, pulls a raw sync payload, POSTs to the hub.
+3. **OTA self-update (required before deployment):** `esp_https_ota` — the satellite periodically checks the hub for a new firmware image and updates itself over WiFi. Once deployed there is no USB cable; without this, every firmware fix is a road trip.
+4. Soak-test at home for a week: router reboots, ring absences, hub downtime (honoring the no-ack-no-pull rule), and at least one successful OTA update.
+5. Deploy to Mississauga on a USB wall adapter. Dashboard freshness becomes continuous across both locations.
+- **Exit criteria:** a night of sleep in Mississauga appears on the dashboard before returning to Montreal — and one post-deployment firmware update lands over OTA.
 
 ### Phase 3 — Custom firmware (open-ended, C/C++, **R09 units only**)
 - Scope: the RF03-class R09s (DEV, then HERO on camera in Phase 4). The R10 (Realtek RTL8762) is out of scope — no ATC groundwork exists for it; it stays on stock firmware.
@@ -123,6 +167,8 @@ Two weeks of personal baseline data now exist. Design sleep score and readiness 
 - **Pipeline integration test:** replay a full day of captured packets through sync → store → analytics → API; assert rollup values.
 - **Phase 3 regression:** the same fixture suite and interface contract validate custom firmware output. If fixtures pass, the app layer is untouched.
 - **Longitudinal sanity checks:** automated daily job flags impossible values (HR 0 or 250, negative sleep) — cheap canary for firmware/parser regressions.
+- **Buffer characterization (Phase 0b test):** the ring's onboard retention (~days) is community folklore, not a datasheet number. Leave DEV unsynced for N days, sync, measure what survived. The result is the real "maximum trip length without a satellite" and a hard number for the video.
+- **One master rule:** never sync a project ring with the stock QRing app once the hub owns it (except the brief Phase 0b oracle window) — the stock app feeds the vendor cloud and may mark the ring's buffered log as delivered, starving the hub.
 
 ## 7. Video production and documentation plan
 
@@ -157,8 +203,10 @@ These become the "here's what this actually looked like" inserts that make the r
 
 | Item | Owner | Blocking |
 |------|-------|----------|
+| Hub build-out per HUB_SETUP.md | Abhi — start now, $0 | Nothing |
+| Monorepo + parsers + synthetic pipeline (Phase 0a) | Abhi + Claude Code | Nothing |
+| Funds for parts order (~$105 CAD: R10 sz 10 + 2× R09 sz 9) | Abhi | Phase 0b only |
 | Confirm size 10 fits (R10 is the daily-wear unit) | Abhi — jeweler | Parts order |
-| Parts order (1× Ruofine R10 sz 10, 2× Ruofine R09 sz 9) | Abhi | Phase 0 hardware work |
 | Verify both listings name QRing as the companion app before checkout | Abhi | Parts order |
 | Composite score formulas (16–18) | Joint design session | Interlude week (~2 weeks of data required) |
 | Dashboard layout preferences | Abhi, iteratively during weeks 8–9 | Nothing — skeleton first |
