@@ -6,6 +6,26 @@ Phase 3 material now, study it later.
 
 ---
 
+## Before buying any ring: the compatibility check (non-negotiable)
+
+Model numbers (R09, R06, R10, etc.) are reused across genuinely incompatible
+hardware/software families by different resellers — this is documented behavior,
+not a rare fluke. Gadgetbridge's own device page warns specifically about
+R02/R03/R06-labeled rings with different hardware and a different companion app.
+Live example: a "Ruofine R09" ordered for this project turned out to be a
+JRing-protocol ring (distinct app, distinct BLE protocol, zero relationship to
+QRing/Colmi tooling) — caught by checking the listing's manual PDF before it
+shipped, and cancelled in time.
+
+**Rule:** before purchasing, find the listing's manual PDF or product images and
+confirm the companion app name is explicitly **QRing**. Any other app name (JRing
+being the most common look-alike) means none of this project's tooling applies —
+`colmi_r02_client`, Gadgetbridge, and ATC_RF03 all assume QRing. On arrival, verify
+again independently via nRF Connect (BLE advertised name/services), regardless of
+what the listing claimed — the listing can be wrong even in good faith.
+
+---
+
 ## Protocol & reverse engineering (read first — needed for parsers)
 
 - **colmi_r02_client** — the reference Python client for the QRing ring family.
@@ -69,24 +89,9 @@ Phase 3 material now, study it later.
   cleanly for the filmed pass.
 - **OBS Studio** — https://obsproject.com — screen capture for dashboard footage.
 
-## Travel Protocol satellite (needed once real rings are on hand; Phase 3 rehearsal)
-
-- **ESP-IDF** — https://docs.espressif.com/projects/esp-idf/en/latest/esp32c3/
-  Why: official SDK for the ESP32-C3. Read: getting-started (toolchain + flashing
-  over the built-in USB Serial/JTAG), the NimBLE example, and `esp_https_ota` for
-  the mandatory OTA self-update before deployment.
-- **NimBLE (Apache, bundled with ESP-IDF)** — read the `nimble-central` example;
-  this is the BLE central role the satellite plays to pull raw payloads from the
-  ring, mirroring what `bleak` does on the hub.
-- **Tailscale Funnel** — https://tailscale.com/kb/1223/funnel — read: quickstart.
-  Why: exposes only the hub's `/ingest` route to the public internet (TLS via
-  Tailscale's relay, no port forwarding); every other route stays Tailnet-only.
-- **esp_wireguard** — https://github.com/trombik/esp_wireguard — fallback if a
-  fully closed point-to-point tunnel is ever preferred over Funnel + bearer token.
-
 ## Phase 3 (skim now, study later)
 
-- ATC_RF03 repo (above) — BlueX RF03 SDK + datasheet links inside it.
+- ATC_RF03 repo (above) → BlueX RF03 SDK + datasheet links inside it.
 - SWD basics: any ST-Link/J-Link intro guide; concepts needed: SWDIO/SWCLK/GND/VCC,
   attach vs reset-halt, flash read-back before first write (dump stock firmware
   as the recovery image — non-negotiable first step).
@@ -95,8 +100,8 @@ Phase 3 material now, study it later.
 
 ## Reading order for the zero-hardware phase
 
-1. HUB_SETUP.md — working hub (one evening)
-2. colmi_r02_client source — packet structures (one session)
-3. Gadgetbridge Yawell page + relevant source files — R09/R10 deltas (one session)
-4. bleak scanning tutorial — smoke-test scan on the hub (30 min)
+1. HUB_SETUP.md → working hub (one evening)
+2. colmi_r02_client source → packet structures (one session)
+3. Gadgetbridge Yawell page + relevant source files → R09/R10 deltas (one session)
+4. bleak scanning tutorial → smoke-test scan on the hub (30 min)
 5. Everything else on demand as the code needs it

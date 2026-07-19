@@ -1,7 +1,7 @@
 # HUB_SETUP.md — 2014 MacBook Air as an always-on home hub
 
 Goal state: lid closed, plugged into the wall, silent, reachable over SSH and Tailscale,
-Bluetooth working, running Python services 24/7. Useful for Project Ring and anything
+Bluetooth working, running Python services 24/7. Useful for RavenX Smart Ring and anything
 else you throw at it later. A laptop makes a surprisingly good home server — the battery
 is a built-in UPS.
 
@@ -98,7 +98,7 @@ Every long-running piece (sync service, FastAPI) runs as a systemd unit so it
 survives reboots and crashes. Template — `~/.config/systemd/user/ring-dashboard.service`:
 ```ini
 [Unit]
-Description=Project Ring dashboard (FastAPI)
+Description=RavenX Smart Ring dashboard (FastAPI)
 After=network.target
 
 [Service]
@@ -137,15 +137,15 @@ sudo dpkg-reconfigure -plow unattended-upgrades
 
 ## 8. Verification checklist
 
-- [ ] Lid closed 10 minutes — still answers ping and SSH
-- [ ] Survives reboot — SSH back in without touching the machine
+- [ ] Lid closed 10 minutes → still answers ping and SSH
+- [ ] Survives reboot → SSH back in without touching the machine
 - [ ] `bluetoothctl scan on` sees nearby BLE devices
 - [ ] Python venv imports bleak + fastapi
 - [ ] Tailscale: iPhone reaches the hub with WiFi off (cellular) — this is also
       the privacy-segment demo shot for the video
 - [ ] Dummy systemd user service starts on boot with linger enabled
 
-## Beyond Project Ring
+## Beyond RavenX Smart Ring
 
 Once this box exists it's a general-purpose home server: Syncthing node for file
 sync, backup target, cron-job host, network-wide ad blocking, a place to run any
