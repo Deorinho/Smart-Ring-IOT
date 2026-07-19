@@ -14,7 +14,7 @@ Scope guardrail: the ring is deliberately rudimentary. It senses and relays. All
 
 ## 2. Architecture summary
 
-```
+```text
 QRing-family rings            Hub (2014 MBA, Linux Mint)         Viewers
 +-----------------+   BLE    +---------------------------+      +------------------+
 | PPG + accel +   | -------> | Sync service (Python/bleak)|      | iPhone (PWA)     |
@@ -36,7 +36,7 @@ QRing-family rings            Hub (2014 MBA, Linux Mint)         Viewers
 
 Problem: frequent stays in Mississauga exceed dashboard *freshness* (ring buffers onboard, ~days) even though no data is lost on typical trips. Solution: a permanently deployed satellite collector at the second location.
 
-```
+```text
 Ring (in Mississauga)          ESP32-C3 satellite            Hub (Montreal)
 +---------------+    BLE      +--------------------+  HTTPS  +------------------+
 | Onboard log   | ----------> | NimBLE central     | ------> | /ingest endpoint |
@@ -48,6 +48,7 @@ Ring (in Mississauga)          ESP32-C3 satellite            Hub (Montreal)
 ```
 
 Design rules:
+
 - **Dumb radio, smart hub.** The satellite pulls *raw* sync payloads over BLE and forwards them unparsed. All protocol parsing stays in the hub's Python — single implementation of protocol truth. Satellite firmware ≈ NimBLE central + HTTP client, a few hundred lines of C (ESP-IDF).
 - **Connectivity:** ESP32 cannot join the Tailnet (no Tailscale client). The hub exposes *only* the `/ingest` route publicly via **Tailscale Funnel** (TLS via Tailscale relay, no port forwarding), locked with a bearer token. Dashboard and all other routes remain Tailnet-only. Alternative if a fully closed system is ever wanted: `esp_wireguard` point-to-point tunnel.
 - **Ring buffer is sacred:** the satellite must receive hub acknowledgment of a payload before performing any operation that could mark the ring's onboard log as delivered. If WiFi/hub is unreachable, the satellite does not pull.
@@ -70,7 +71,7 @@ The sync service separates *when to sync* from *how to sync*:
 Temperature-derived metrics are **back in scope** — all three selected rings (R09/R10 generation) carry a temperature sensor, unlike the original R02 plan. Additionally, stock firmware on this generation syncs HRV (daily average) and REM sleep staging, moving metric 5 from Phase-3-only to available at day one; Phase 3 now targets HRV *quality* (beat-to-beat) rather than HRV existence. Composite scores (sleep score, readiness, stress, VO2max) remain **deferred** — formulas to be designed after raw metrics are flowing.
 
 | # | Metric | Sensor | Computed by | Available |
-|---|--------|--------|-------------|-----------|
+| --- | -------- | -------- | ------------- | ----------- |
 | 1 | Resting heart rate | PPG | Hub (daily min/percentile of HR samples) | Phase 1–2 |
 | 2 | Daytime heart rate | PPG | Ring (periodic samples) → hub | Phase 1–2 |
 | 3 | Nighttime HR curve | PPG | Hub (overnight sample series) | Phase 1–2 |
@@ -95,19 +96,21 @@ Numbering note: 16–19 remain reserved for the deferred composite scores (16 sl
 ## 4. Bill of materials and tools
 
 ### Hardware
+
 | Item | Qty | Est. cost (CAD) | Notes |
-|------|-----|------------------|-------|
+| ------ | ----- | ------------------ | ------- |
 | Colmi R09 smart ring, size 12 | 1 | ~$27 | **DAILY.** Official Colmi store, QRing confirmed. RF03-class, temperature sensor. ETA end of July. Undergoes the on-wrist testing phase before any further ring purchases are made. |
 | Colmi R06 smart ring, size 10 | 1 | ~$4 | **DEV.** Official Colmi, QRing confirmed. RF03-class, R02-family drop-in — the tinker/sacrifice unit (SWD candidate, Phase 3 target). ETA end of July. Confirm via nRF Connect on arrival regardless (ground truth over listings). |
 | Colmi R09 #2 (future) | 0/1 | ~$27 | **HERO — gated purchase.** Bought only after DAILY survives the testing phase. If DAILY shows issues, hold; if DAILY breaks or bricks, its replacement purchase doubles as this decision point. |
 | ~~Ruofine R10, size 10~~ | — | — | **Dropped from active plan.** Was a contingent sensor/charging upgrade; the project fully functions on the R09/R06 pair. |
-| ~~Ruofine R09, size 12~~ | ~~1~~ | ~~$25.39~~ | **Cancelled.** Confirmed JRing-protocol on the manual PDF before shipping — different hardware, different app, no compatibility with any project tooling. Kept here as a documented near-miss, not counted in fleet cost. Lesson: model numbers (R09, R06, etc.) are reused across incompatible hardware families by different resellers; verify the companion app name on the listing *before* purchase, not after. See RESOURCES.md.
+| ~~Ruofine R09, size 12~~ | ~~1~~ | ~~$25.39~~ | **Cancelled.** Confirmed JRing-protocol on the manual PDF before shipping — different hardware, different app, no compatibility with any project tooling. Kept here as a documented near-miss, not counted in fleet cost. Lesson: model numbers (R09, R06, etc.) are reused across incompatible hardware families by different resellers; verify the companion app name on the listing *before* purchase, not after. See RESOURCES.md. |
 | Ring sizing kit or jeweler measurement | 1 | $0–5 | US size + inner diameter in mm. Wide band → size up if between sizes. Measure late in day. Confirm size 10 for the R10 before ordering — it's the daily-wear unit. |
 | USB BLE dongle (for desktop PC) | 1 | ~$15 | Optional — MBA has built-in BLE 4.0. |
 | Chargers | — | included | R09s: magnetic charging case. R10: wireless charging dock (different ecosystem — keep the R10 dock at bedside, one R09 case at the hub). |
 | ST-Link/J-Link + fine probes | 1 | ~$15–40 | **Phase 3 only.** SWD recovery/flash path. Defer purchase. |
 
 ### Existing hardware (no cost)
+
 - 2014 MacBook Air, Linux Mint Cinnamon — the hub. Configure logind to ignore lid switch; runs 24/7 on wall power.
 - Desktop PC — development machine, Claude Code host.
 - iPhone — primary dashboard viewer (PWA).
@@ -116,6 +119,7 @@ Numbering note: 16–19 remain reserved for the deferred composite scores (16 sl
 - **ESP32-WROOM-32 dev boards** — drawer spares / fallback; general BLE experimentation.
 
 ### Software / services (all free)
+
 - Python 3.12+, `bleak`, `colmi_r02_client` (reference), pytest, FastAPI, SQLite
 - Chart.js (dashboard skeleton; frontend design offloaded to Claude Code)
 - nRF Connect (iOS/Android) — BLE inspection
@@ -128,7 +132,9 @@ Numbering note: 16–19 remain reserved for the deferred composite scores (16 sl
 ## 5. Phase plan (calibrated to ~5h dev + ~2h documentation per week)
 
 ### Phase 0a — Zero-hardware framework ($0, start now)
+
 No purchase required; ~70% of the build happens here. Sequence:
+
 - **Hub build-out** (see HUB_SETUP.md): lid-closed 24/7 operation, SSH, Bluetooth verified, Python env, Tailscale, systemd service pattern. General-purpose home server from day one.
 - **Monorepo setup:** `protocol/`, `hub/`, `dashboard/`, `firmware/`, `notebook.md`. First notebook entry same day. Documentation set (PLAN, RESOURCES, HUB_SETUP) lives at the root.
 - **Parsers first:** packet parsers built against community-published captures (colmi_r02_client + Gadgetbridge sources per RESOURCES.md); pytest suite with JSON test vectors from day one.
@@ -137,31 +143,39 @@ No purchase required; ~70% of the build happens here. Sequence:
 - **Exit criteria:** hub passes its verification checklist; parsers pass the fixture suite; the PWA on the iPhone shows a (synthetic) week of sleep and activity.
 
 ### Phase 0b — Purchase and hardware bring-up (gated on funds)
+
 - Confirm size 10, verify QRing on both listings, order (1× R10 sz 10, 2× R09 sz 9). Shipping ~1–3 weeks — dead time absorbed by remaining 0a work.
 - Arrival: label units (DEV opened without ceremony per the two-pass production model; HERO stays sealed; DAILY charged and worn); pair DEV with the stock QRing app briefly (reference oracle); nRF Connect GATT enumeration on DEV (R09) and DAILY (R10) — capture and diff their service tables; first real sync from the hub.
 - Integration is thin by design: point the tested sync service at real MAC addresses; real rows replace synthetic ones.
 - **Exit criteria:** one real overnight of sleep data renders on the dashboard.
 
 ### Phase 1+2 — Real-data pipeline and dashboard hardening (weeks clocked from hardware arrival)
+
 Much of the original scope lands early in Phase 0a against synthetic data; this phase converts it to real data and fixes what reality breaks.
+
 - Weeks 1–2: sync service against real rings (scheduled v1 policy per §2.2: timer-driven pull of the onboard log, dedupe, store). Metrics 1–5, 8, 11–12, 20 flowing. Parser fixes for R09/R06 protocol deltas found in enumeration.
 - Weeks 3–4: analytics against real data — recalibrate sleep session detection, stage estimation (13–14), activity bucketing (10), calorie model (9), workout heuristic (15), temperature baseline (21).
 - Weeks 5–6: dashboard iteration with real data on screen; layout refinement via Claude Code with Abhi's input.
 - **Exit criteria:** wake up → coffee → glance at phone → last night's sleep and yesterday's activity are just *there*, no user action.
 
 ### Interlude — Composite score design (Week ~10)
+
 Two weeks of personal baseline data now exist. Design sleep score and readiness formulas as weighted blends vs. personal baselines. Ship v1, tune over time.
 
 ### Parallel track — Travel Protocol (**SHELVED** — see §2.1; design retained, revive on demand)
+
 Prereq when revived: real rings on hand (BLE development needs a real peripheral); hub ingest endpoint live. Development happens directly on the ESP32-C3 (deployment target; built-in USB Serial/JTAG gives flash + monitor + debug over one cable). WROOM-32 boards are drawer spares / fallback only.
+
 1. Hub side (Python, one session): `/ingest` route accepting raw payloads; reuse existing parsers + dedupe; expose via Tailscale Funnel with bearer token.
 2. C3 firmware at home: NimBLE central connects to DEV ring, pulls a raw sync payload, POSTs to the hub.
 3. **OTA self-update (required before deployment):** `esp_https_ota` — the satellite periodically checks the hub for a new firmware image and updates itself over WiFi. Once deployed there is no USB cable; without this, every firmware fix is a road trip.
 4. Soak-test at home for a week: router reboots, ring absences, hub downtime (honoring the no-ack-no-pull rule), and at least one successful OTA update.
 5. Deploy to Mississauga on a USB wall adapter. Dashboard freshness becomes continuous across both locations.
+
 - **Exit criteria:** a night of sleep in Mississauga appears on the dashboard before returning to Montreal — and one post-deployment firmware update lands over OTA.
 
 ### Phase 3 — Custom firmware (open-ended, C/C++, **DEV unit only, provisionally the R06**)
+
 - Scope: whichever confirmed RF03-class unit holds the DEV role (currently the Colmi R06, pending its own QRing verification). R10, if acquired, stays out of scope — Realtek chip, no ATC groundwork exists for it, stays on stock firmware.
 - Write the GATT interface contract document *first* — the app must not care which firmware answers.
 - OTA custom firmware via WebBluetooth flasher from Linux/desktop Chrome (not iOS). Verify the ATC_RF03 tooling recognizes the specific unit's hardware revision before any write.
@@ -170,6 +184,7 @@ Prereq when revived: real rings on hand (BLE development needs a real peripheral
 - **Blocked on a HERO unit existing** (see §8) before Phase 4 can re-perform this on camera.
 
 ### Phase 4 — Video production (begins at ~80% product completion)
+
 - Gate: product works end to end (or ≥80%); confidence is high enough that every step can be re-performed smoothly on camera.
 - Script written from `notebook.md`; every claimed nuance or time cost must have a captured artifact backing it.
 - Re-perform the full journey on the HERO unit: unboxing → recon → sync → dashboard → (if in scope) epoxy scraping, SWD, custom flash. HERO receives the same modifications DEV did, on camera.
@@ -188,12 +203,15 @@ Prereq when revived: real rings on hand (BLE development needs a real peripheral
 ## 7. Video production and documentation plan
 
 ### Production model — two passes (revised July 18)
+
 1. **Dev pass (Phases 0–3, DEV + DAILY units): documentary capture.** Filmed *and* noted as it happens — challenges, design issues, dead ends, and the growing understanding of the project. Raw and unpolished is the point; no retakes, no performance pressure. This footage is the **substance** of the final video.
 2. **Filmed pass (Phase 4, HERO unit): production polish.** After ~80% completion, re-perform the journey on camera with full confidence. Focus: eye-catching, entertaining delivery — pacing, framing, b-roll, energy. This footage is the **presentation layer**; the dev-pass documentary material gets cut in as the real story.
 3. Honesty beat: show the scarred DEV unit next to the pristine HERO on camera — "this is what the first attempt looks like." Acknowledges the re-staging, shows the real cost of figuring it out.
 
 ### Evidence rule (during the dev pass)
+
 The camera now rolls during development, but the lightweight capture discipline still applies — footage without context is unusable, and some artifacts (logs, packets, errors) don't film well:
+
 - `notebook.md` entry every session — date, what worked, what broke, how long it took. This file **is** the script skeleton.
 - Screenshot anything surprising: weird packets, cryptic errors, the first rows landing in SQLite, dashboard milestones (skeleton → styled → on the home screen).
 - asciinema for terminal sessions (replays cleanly for screen capture during the filmed pass).
@@ -201,12 +219,14 @@ The camera now rolls during development, but the lightweight capture discipline 
 These become the "here's what this actually looked like" material that makes the polished footage credible.
 
 ### Editorial guidelines
+
 - **Purpose:** present the idea to the masses — not a tutorial, not a buying guide. Story: "I didn't like the crop of smart wearables in the fitness industry, so I did something about it."
 - **No product recommendations.** Dependencies named generically ("a ~$25 ring from AliExpress," "an old laptop running Linux," "an open-source BLE client") — no brand endorsements. Commentary limited to first-person experience: what was purchased, what it cost, how long things took, nuances encountered.
 - **Privacy angle — frame as trust requirements, not accusations.** Do not claim any named company sells data. The stronger, safer framing: commercial wearables require trusting a privacy policy the user can't verify and that can change post-purchase; this ring requires trusting nothing — data never leaves the home network, no account exists, no subscription exists, and it survives every involved company disappearing.
 - **Privacy segment demo beats:** ring syncing with WiFi off; opening the raw SQLite file directly; total lifetime cost = three rings + $0/month; the dashboard loading over Tailscale with no cloud in the path.
 
 ### Filmed-pass shot list (Phase 4)
+
 - Unboxing HERO; the parts-order screen recording as insert.
 - nRF Connect GATT browsing; first sync in the terminal (asciinema replay or live).
 - Dashboard reveal on the iPhone — the "glance test."
@@ -217,7 +237,7 @@ These become the "here's what this actually looked like" material that makes the
 ## 8. Open items
 
 | Item | Owner | Blocking |
-|------|-------|----------|
+| ------ | ------- | ---------- |
 | **Hub foundation plug-and-play before rings arrive** (HUB_SETUP.md checklist) | Abhi — top priority | Phase 0b bring-up |
 | Monorepo + parsers + synthetic pipeline (Phase 0a) | Abhi + Claude Code | Nothing |
 | Confirm R06 + R09 via nRF Connect on arrival (ground truth over listings) | Abhi | Trusting the fleet |

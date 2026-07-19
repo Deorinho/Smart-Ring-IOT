@@ -9,6 +9,7 @@ hub foundation plug-and-play ready before rings arrive. Travel Protocol shelved
 (PLAN.md §2.1). Phase 0a work continues against synthetic data (PLAN.md §5).
 
 ## Source-of-truth documents (read before structural or planning work)
+
 - `PLAN.md` — mission, architecture (incl. the shelved Travel Protocol, §2.1),
   metrics scope, BOM, phase plan, testing strategy. Authoritative. If a task
   conflicts with PLAN.md, stop and ask.
@@ -21,6 +22,7 @@ hub foundation plug-and-play ready before rings arrive. Travel Protocol shelved
   date, what was done, what broke, open questions.
 
 ## Repo layout
+
 - `protocol/` — protocol documentation + JSON test vectors (shared fixtures)
 - `hub/` — Python: BLE sync service, parsers, SQLite, analytics, FastAPI
   (including the `/ingest` route the Travel Protocol satellite posts to)
@@ -30,6 +32,7 @@ hub foundation plug-and-play ready before rings arrive. Travel Protocol shelved
   scope until their respective phases (see PLAN.md §5)
 
 ## Non-negotiable engineering rules
+
 - IMPORTANT: Design before code. For any new task, first produce a design doc
   (flow diagram, state diagram if stateful, class/interface diagram — Mermaid
   in fenced code blocks, signatures not bodies) and stop for explicit approval.
@@ -54,6 +57,7 @@ hub foundation plug-and-play ready before rings arrive. Travel Protocol shelved
 - SQLite timestamps: store as UTC ISO-8601 TEXT everywhere. One convention, no exceptions.
 
 ## Environment & commands
+
 - Python 3.12+, venv at `.venv/`; deps: bleak, fastapi, uvicorn[standard], pytest
 - Tests: `pytest` from repo root
 - Dev runs on the desktop PC; the hub only pulls via git and runs services
@@ -64,6 +68,7 @@ hub foundation plug-and-play ready before rings arrive. Travel Protocol shelved
   hardware unless asked.
 
 ## Style
+
 - Keep dashboard v1 rudimentary but not ugly — dark theme, glanceable
   daily/weekly/monthly charts. Owner provides layout feedback iteratively.
 - Prefer editing existing files over creating new ones; no speculative modules.

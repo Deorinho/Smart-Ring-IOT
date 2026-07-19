@@ -29,24 +29,24 @@ what the listing claimed — the listing can be wrong even in good faith.
 ## Protocol & reverse engineering (read first — needed for parsers)
 
 - **colmi_r02_client** — the reference Python client for the QRing ring family.
-  Docs: https://tahnok.github.io/colmi_r02_client/colmi_r02_client.html
-  Repo: https://github.com/tahnok/colmi_r02_client
+  Docs: <https://tahnok.github.io/colmi_r02_client/colmi_r02_client.html>
+  Repo: <https://github.com/tahnok/colmi_r02_client>
   Why: working parser implementations for HR, SpO2, steps, sleep packets; the
   fastest way to understand the byte layout. Read the source, not just the docs.
   Use it as a library first; replace pieces with your own code as you learn.
 
-- **Gadgetbridge — Yawell/Colmi device page** — https://gadgetbridge.org/gadgets/wearables/yawell/
+- **Gadgetbridge — Yawell/Colmi device page** — <https://gadgetbridge.org/gadgets/wearables/yawell/>
   Why: authoritative model matrix (which ring = which hardware = which features),
   including the R09/R10 distinctions and firmware-version feature notes (HRV, REM,
   temperature, stress).
 
-- **Gadgetbridge source code** — https://codeberg.org/Freeyourgadget/Gadgetbridge
+- **Gadgetbridge source code** — <https://codeberg.org/Freeyourgadget/Gadgetbridge>
   Why: a second, independent implementation of the QRing protocol (Java). When your
   parser disagrees with colmi_r02_client, this is the tiebreaker. Search the tree
   for the Colmi/Yawell device support classes. Also the best source of protocol
   handling for the R09/R10 generation specifically (temperature, HRV packets).
 
-- **ATC_RF03 project (Aaron Christophel)** — https://github.com/atc1441/ATC_RF03_Ring
+- **ATC_RF03 project (Aaron Christophel)** — <https://github.com/atc1441/ATC_RF03_Ring>
   Why: the custom-firmware foundation — RF03 SoC findings, SDK/datasheet links,
   OTA flasher (linked from the repo), example firmware. Phase 3's bible; skim the
   README now to understand what's possible. His accompanying YouTube teardown video
@@ -54,21 +54,21 @@ what the listing claimed — the listing can be wrong even in good faith.
 
 ## Python stack (zero-hardware phase)
 
-- **bleak** — https://bleak.readthedocs.io — cross-platform BLE client library.
+- **bleak** — <https://bleak.readthedocs.io> — cross-platform BLE client library.
   Read: scanning, connecting, GATT characteristic read/write/notify. Your sync
   service is ~200 lines of bleak.
-- **FastAPI** — https://fastapi.tiangolo.com — the hub's API + PWA server.
+- **FastAPI** — <https://fastapi.tiangolo.com> — the hub's API + PWA server.
   Read: first-steps tutorial, StaticFiles, and the SQL databases section.
-- **pytest** — https://docs.pytest.org — read: parametrize (one test, many packet
+- **pytest** — <https://docs.pytest.org> — read: parametrize (one test, many packet
   fixtures) and fixtures.
-- **SQLite** — https://sqlite.org/docs.html — stdlib `sqlite3` is enough; read
+- **SQLite** — <https://sqlite.org/docs.html> — stdlib `sqlite3` is enough; read
   the datatype notes (store timestamps as ISO-8601 TEXT or unix INTEGER, pick one).
 
 ## Dashboard (zero-hardware phase, with synthetic data)
 
-- **Chart.js** — https://www.chartjs.org/docs/latest/ — read: line + bar charts,
+- **Chart.js** — <https://www.chartjs.org/docs/latest/> — read: line + bar charts,
   time axis (needs a date adapter), responsive options. Dark theme via CSS variables.
-- **PWA basics (MDN)** — https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps
+- **PWA basics (MDN)** — <https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps>
   Read: web app manifest (name, icons, display: standalone). That alone gets
   "Add to Home Screen" on iOS looking like a native app. Service worker optional
   for v1 — the hub is always reachable via Tailscale anyway.
@@ -76,7 +76,7 @@ what the listing claimed — the listing can be wrong even in good faith.
 ## Hub & networking
 
 - **HUB_SETUP.md** (this repo) — the 2014 MBA build-out, start to finish.
-- **Tailscale docs** — https://tailscale.com/kb — read: quickstart, MagicDNS.
+- **Tailscale docs** — <https://tailscale.com/kb> — read: quickstart, MagicDNS.
 - **systemd user units** — `man systemd.service`, `man loginctl` (linger). The
   Arch Wiki's systemd/User page is the best readable overview regardless of distro.
 
@@ -85,9 +85,9 @@ what the listing claimed — the listing can be wrong even in good faith.
 - **nRF Connect for Mobile** (Nordic Semiconductor — iOS App Store) — GATT
   browser for the recon step; also useful now to practice on any BLE device
   you own (headphones, iPad) so the workflow is familiar before the rings arrive.
-- **asciinema** — https://asciinema.org — terminal session recorder; replays
+- **asciinema** — <https://asciinema.org> — terminal session recorder; replays
   cleanly for the filmed pass.
-- **OBS Studio** — https://obsproject.com — screen capture for dashboard footage.
+- **OBS Studio** — <https://obsproject.com> — screen capture for dashboard footage.
 
 ## Phase 3 (skim now, study later)
 

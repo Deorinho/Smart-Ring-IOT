@@ -1,0 +1,6 @@
+{
+  // Line-length is disabled: these are long-form planning/prose docs, not
+  // hard-wrapped text, and PLAN.md is actively edited as a living source of
+  // truth. Structural rules (blank lines, bare URLs, table formatting) stay on.
+  "MD013": false
+}
