@@ -11,20 +11,37 @@ touching a parser, which is what "dumb radio, smart hub" actually requires.
 from __future__ import annotations
 
 from datetime import datetime
+from protocol.packets import build_packet
 
 # --- GATT interface --------------------------------------------------------
-# TODO(confirm by enumeration): these are the QRing-family UUIDs reported by
-# community tooling. Enumerate R06_D29C with nRF Connect or bleak's
-# `BleakClient.services` and confirm before writing a single byte to the ring.
-# Writing commands to a guessed characteristic is how you find out the hard way.
-UART_SERVICE_UUID = "6E40FFF0-B5A3-F393-E0A9-E50E24DCCA9E"
-UART_RX_CHAR_UUID = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"   # hub writes here
-UART_TX_CHAR_UUID = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"   # ring notifies here
+# CONFIRMED by enumeration of R06_D29C on 2026-08-02. Lowercase deliberately: bleak
+# normalizes characteristic UUIDs to lowercase, so a naive `==` against an uppercase
+# literal silently never matches. Casefold both sides if you ever compare by hand.
+#
+# Command channel — short fixed-length packets (see packets.PACKET_LEN).
+UART_SERVICE_UUID = "6e40fff0-b5a3-f393-e0a9-e50e24dcca9e"
+UART_RX_CHAR_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"   # hub writes here
+UART_TX_CHAR_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"   # ring notifies here
 
-# TODO(confirm): command opcodes. Read them out of colmi_r02_client rather than
-# trusting this comment.
-CMD_SET_TIME = 0x01
+# Second vendor service, same notify/write shape, found during the same enumeration.
+# TODO(Abhi): identify what rides on this channel. Working hypothesis — two
+# identically-shaped channels usually means short commands on one and bulk transfer on
+# the other, so this is the likely home of large history dumps (sleep records, and any
+# raw-waveform access later). Confirm against Gadgetbridge's Colmi/Yawell classes
+# before assuming sleep data arrives on UART_TX_CHAR_UUID and concluding the parser is
+# broken when it never shows up.
+BULK_SERVICE_UUID = "de5bf728-d711-4e47-af26-65e3012a5dc7"
+BULK_RX_CHAR_UUID = "de5bf72a-d711-4e47-af26-65e3012a5dc7"   # hub writes here
+BULK_TX_CHAR_UUID = "de5bf729-d711-4e47-af26-65e3012a5dc7"   # ring notifies here
+
+# CONFIRMED 2026-08-02 by round trip against R06_D29C: sending 0x03 returned
+# `03 50 00 ... 00 53` — the ring echoes the command byte in position 0, so every
+# reply is self-identifying and a single notify handler can dispatch on byte[0].
 CMD_BATTERY = 0x03
+
+# TODO(confirm): still unverified. Read it out of colmi_r02_client — and see the
+# DANGER note on set_time() before sending this one to R06_D29C.
+CMD_SET_TIME = 0x01
 
 
 def set_time(now_utc: datetime) -> bytes:
@@ -44,9 +61,7 @@ def set_time(now_utc: datetime) -> bytes:
 
 
 def request_battery() -> bytes:
-    """Build the battery-status request. The cheapest end-to-end round trip, so this
-    is the right first command to prove the write/notify path works."""
-    raise NotImplementedError
+    return build_packet(CMD_BATTERY)
 
 
 def request_heart_rate_log(day_offset: int) -> bytes:

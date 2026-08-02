@@ -53,30 +53,32 @@ class SleepSession:
 
 
 def checksum(data: bytes) -> int:
-    """Return the checksum byte for the first 15 bytes of a packet.
+    """Low 8 bits of the sum of the first 15 bytes.
 
-    TODO(Abhi): confirmed community behaviour is `sum(data[:15]) & 0xFF`. Verify
-    against a real packet from R06_D29C before relying on it.
+    The & 0xFF does what a uint8_t accumulator gives you for free in C — Python
+    ints are arbitrary-precision and never wrap.
     """
-    raise NotImplementedError
+    return sum(data[:CHECKSUM_INDEX]) & 0xFF
+
+
+def parse_command_id(packet: bytes) -> int:
+    return packet[0]
 
 
 def build_packet(command: int, payload: bytes = b"") -> bytes:
-    """Assemble a 16-byte command packet: command byte, payload, zero pad, checksum.
+    """Assemble a 16-byte packet: command byte, payload, zero padding, checksum."""
+    if len(payload) > CHECKSUM_INDEX - 1:
+        raise ValueError(f"payload too long: {len(payload)} bytes")
 
-    Raises ValueError if payload is too long to fit. Must be the ONLY place packets
-    are constructed — `commands.py` builds on top of this, nothing bypasses it.
-    """
-    raise NotImplementedError
+    body = (bytes([command]) + payload).ljust(CHECKSUM_INDEX, b"\x00")
+    return body + bytes([checksum(body)])
 
 
 def is_valid(packet: bytes) -> bool:
-    """True if the packet is PACKET_LEN bytes and its checksum byte matches.
-
-    Called on every received packet before parsing. A packet that fails this is
-    logged and dropped, never parsed optimistically.
-    """
-    raise NotImplementedError
+    """True if the packet is PACKET_LEN bytes and its checksum byte matches."""
+    if len(packet) != PACKET_LEN:
+        return False
+    return packet[CHECKSUM_INDEX] == checksum(packet)
 
 
 # --- Parsers ---------------------------------------------------------------
@@ -85,8 +87,11 @@ def is_valid(packet: bytes) -> bool:
 
 
 def parse_battery(packet: bytes) -> tuple[int, bool]:
-    """Return (percent, is_charging) from a battery-status packet."""
-    raise NotImplementedError
+    percent = packet[1]
+    # UNVERIFIED: byte[2] was 0 while worn. Charging test blocked by the ring being
+    # unreachable in the case — don't depend on this until it's confirmed.
+    is_charging = packet[2] != 0
+    return percent, is_charging
 
 
 def parse_heart_rate_log(packet: bytes, day_start_utc: str) -> tuple[Sample, ...]:

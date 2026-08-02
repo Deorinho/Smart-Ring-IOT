@@ -193,7 +193,7 @@ safe as a permanent database key. Re-verify in a week.
   a numbered **session roadmap** rather than open-ended phases, since work happens in
   2–4 hour weekend blocks.
 - Created `Bug_Backlog.md` (P1/P2/P3 + a RISK tier), seeded with six real risks.
-- Created `.claude/skills/start-up/` — the session-open briefing ritual.
+- Created `.claude/skills/startup/` — the session-open briefing ritual.
 - First code in the repo's history: `hub/schema.sql` (generic telemetry store),
   `hub/config.py` (MAC, sensing policy, cadence), and scaffolds for `protocol/packets.py`
   and `protocol/commands.py`. Scaffolds carry signatures, contracts, and traps — no
@@ -212,3 +212,109 @@ which is a one-shot observation on a factory-virgin ring.
 
 **Not yet built:** `hub/db.py`, `hub/sync.py`, `hub/api.py`, `dashboard/`, and the
 30-minute journal automation.
+
+## 2026-08-02 — Session 2: first conversation with the ring
+
+Baseline goal was "a battery percentage prints in the terminal." **Met**, and the
+reconnaissance on the way there was worth more than the goal.
+
+### The round trip
+
+Sent `03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 03`. Got back
+`03 50 00 00 00 00 00 00 00 00 00 00 00 00 00 53`.
+
+- `byte[0] = 0x03` — the ring **echoes the command byte**. Every reply is
+  self-identifying, which means one notification handler can dispatch packets to the
+  right parser instead of the caller tracking what it asked for. That's the shape of
+  the real sync service, now known rather than assumed.
+- `byte[1] = 0x50` = **80% battery**. Plausible: charged full, worn since 00:30.
+- `byte[15] = 0x53` = 83 = 3 + 80. **`checksum_ok=True`.**
+
+The checksum is now confirmed **in both directions**: the ring accepted a packet built
+with `sum(data[:15]) & 0xFF`, and the ring's own reply validates under the same
+function. The ring's firmware served as the reference implementation — no external
+oracle needed. `CMD_BATTERY = 0x03` confirmed at the same time.
+
+### GATT enumeration — two services, not one
+
+The scaffold assumed a single vendor channel. There are two, both with the same
+notify/write shape:
+
+- `6e40fff0…` with `6e400002` (write) / `6e400003` (notify) — the command channel,
+  matching the community UUIDs exactly.
+- `de5bf728…` with `de5bf72a` (write) / `de5bf729` (notify) — **unidentified**.
+  Working hypothesis: two identically-shaped channels usually means short commands on
+  one and bulk transfer on the other, so this is the likely home of sleep records and
+  large history dumps. Worth knowing before concluding a sleep parser is broken because
+  data never arrives on the channel being listened to.
+
+No Battery Service (`180f`), so there was no shortcut — the protocol path was the only
+path, which is what the goal wanted anyway.
+
+### Device Information — the chipset answer
+
+| Field | Value |
+| --- | --- |
+| Manufacturer | **Bluex** |
+| Model Number | BX-BLE-5.0 |
+| Firmware Revision | **R06_1.00.06_240921** |
+| Hardware Revision | R06_V1.0 |
+| System ID | `9c d2 87 00 00 4a 5f 81` |
+| PnP ID | `02 5e 04 40 00 00 03` |
+
+**The R06 is BlueX-based**, which is exactly the family ATC_RF03 targets. Phase 3 went
+from "plausible, chipset unverified" to "confirmed viable" on one read. Firmware build
+date is encoded as `240921` — 2024-09-21, recent enough that stock HRV, REM staging,
+and temperature reporting are likely present.
+
+**System ID is the MAC, burned into firmware.** Decoded as the spec's EUI-64
+construction, little-endian: `9c d2 87` reverses to the MAC's low three bytes,
+`4a 5f 81` to the high three, `00 00` is the filler. The address cannot rotate — it's
+in a read-only characteristic. That settles the database-key stability question
+permanently; no week-long re-verification needed.
+
+**PnP ID decodes to Microsoft's USB vendor ID (`0x045E`)** — a placeholder, not a
+BlueX confirmation. But combined with serial `BX-DEVICE-001` and regulatory data of
+`ff ee dd cc bb aa`, that's **three of eight DIS fields left at SDK defaults**. This
+firmware sits close to a stock BlueX reference build with minimal vendor divergence,
+which is a genuine positive signal for Phase 3: the closer to reference, the more
+directly ATC_RF03's findings transfer.
+
+### What broke
+
+- `raw.hex("")` — `ValueError: sep must be length 1`. `bytes.hex()` takes exactly one
+  separator character or no argument; empty string satisfies neither. Killed script 2
+  after the five text fields and before the three binary ones. Re-ran for the rest.
+- **The charging-flag test failed to connect.** With the ring in the charging case,
+  `BleakClient.__aenter__` timed out after 20 s — no protocol involved, the peripheral
+  simply wasn't connectable. Most likely the ring stops advertising while charging, or
+  the case shields the antenna; not yet distinguished. Logged as R-007.
+
+That last one is a **design finding, not just a failed experiment**: the sync service
+must treat "unreachable" during charging windows as normal, since charging happens
+roughly daily. `sync_runs.status` already has `no_device` for exactly this.
+
+### Repo work
+
+- Ported into `protocol/`: `checksum`, `build_packet`, `is_valid`, `parse_command_id`,
+  `parse_battery` (percent confirmed, charging flag left explicitly unverified), and
+  `request_battery`.
+- Added `__init__.py` to `protocol/` and `hub/` — cross-module imports needed real
+  packages, which is what actually blocked `request_battery`, not the one-line body.
+- Confirmed constants written back into the scaffolds with their evidence, so the
+  files record *why* a value is trusted, not just what it is.
+- Adopted a git workflow: session branches named for the roadmap row, squash-merged via
+  PR, `main` kept as the hub's deployment target so a half-written sync service can
+  never land on the running machine.
+- Added the `/shutdown` skill, completing the session handshake with `/startup`.
+  Includes a lint stage bounded to mechanical fixes — scaffolded `NotImplementedError`
+  stubs are explicitly never "fixed."
+
+### Open
+
+- Charging flag (`byte[2]`) unverified; blocked on R-007.
+- `de5bf728` service purpose unknown.
+- **Buffer-depth experiment still running and untouched** — a battery request doesn't
+  pull the onboard log, so the clock from 00:30 is intact.
+- `set_time` deliberately untouched. The raw log dump must come first, and it's a
+  one-shot observation on a never-paired ring.
