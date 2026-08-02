@@ -120,15 +120,20 @@ Calibrated to 2–4 hour sessions, roughly two per weekend plus one midweek.
 | # | Goal | Exit criterion |
 | --- | --- | --- |
 | **1** | **Hub foundation + repo reset** ✅ *(2026-08-02)* | Lid closed, SSH reachable, ring visible to bleak |
-| 2 | GATT enumeration + first connect | Service/characteristic table captured; battery command round-trips; **raw log dumped before the clock is set** |
-| 3 | Packet parsers: battery, steps, heart rate | Real bytes from `R06_D29C` parse into typed values |
-| 4 | SQLite store wired up | First real rows land; re-running the sync changes nothing |
-| 5 | Sleep parsing + events | One real night renders as a stage sequence |
-| 6 | Analytics rollups | Daily/weekly summaries from real data |
-| 7 | FastAPI + dashboard | Charts render on the iPhone over Tailscale |
-| 8 | Automation | systemd timer syncs 3×/day unattended, survives reboot |
-| 9 | Hardening | Backups with verified restore; clock-offset correction; sanity checks |
-| 10+ | Architecture B | ESP32-C3 satellite, then video production |
+| **2** | **GATT enumeration + battery round-trip** ✅ *(2026-08-02)* | Both vendor services mapped, chipset identified, `03 → 03 50 … 53` with checksum verified |
+| 3 | Raw log dump + buffer measurement | Log dumped **before** any clock write; `day_offset` walked back until empty — that number is the buffer depth |
+| 4 | Packet parsers: steps, heart rate | Real bytes from `R06_D29C` parse into typed `Sample`s |
+| 5 | SQLite store wired up | First real rows land; re-running the sync changes nothing |
+| 6 | Sleep parsing + events | One real night renders as a stage sequence |
+| 7 | Analytics rollups | Daily/weekly summaries from real data |
+| 8 | FastAPI + dashboard | Charts render on the iPhone over Tailscale |
+| 9 | Automation | systemd timer syncs 3×/day unattended, survives reboot |
+| 10 | Hardening | Backups with verified restore; clock-offset correction; sanity checks |
+| 11+ | Architecture B | ESP32-C3 satellite, then video production |
+
+Session 3 is the deferred half of session 2 — the log dump was split off deliberately
+rather than rushed at the end of a session, since it's a one-shot observation on a
+ring whose clock has never been set.
 
 **Phase gate for the video:** filming begins at ~80% product completion, when every step
 can be re-performed smoothly on camera. The dev pass is documentary-filmed as it
@@ -153,8 +158,10 @@ Working code first — tests when they earn their place, not before.
 
 | Item | Status |
 | --- | --- |
-| Ring buffer depth | Measured session 2; gates Architecture B |
-| GATT UUIDs and command opcodes | Marked TODO(confirm) in `protocol/`; enumeration is session 2 |
+| Ring buffer depth | Measured session 3; gates Architecture B |
+| Command opcodes beyond `CMD_BATTERY` | GATT UUIDs and `CMD_BATTERY = 0x03` confirmed 2026-08-02. Log, sleep, and time opcodes still `TODO(confirm)` |
+| Purpose of the second vendor service (`de5bf728…`) | Found during enumeration; likely bulk transfer. Confirm before assuming sleep data arrives on the command channel |
+| Ring reachability while charging | Bug_Backlog R-007; blocks `parse_battery`'s charging flag |
 | Whether the ring wants local or UTC time on the RTC | Session 2. Convert exactly once; storage stays UTC |
 | Tailscale + Mullvad coexistence on the hub | Bug_Backlog R-001; both manage routing |
 | SQLite backup with verified restore | Bug_Backlog R-004; session 9 |

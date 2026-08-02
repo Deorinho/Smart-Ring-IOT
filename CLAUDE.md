@@ -126,14 +126,30 @@ hub sync. That number sets sync cadence, the battery ceiling, and how urgent B i
 
 ## Session ritual
 
-- **Session start:** Abhi types `@start-up`. Respond with what happened last session, what
+- **Session start:** Abhi types `/startup`. Respond with what happened last session, what
   today's session can realistically accomplish in 2–4 hours, a single baseline goal,
   stretch goals, and open high-priority bugs — then a detailed implementation strategy in
   prose. **Explain the approach and give starting ideas; do not write the code.**
-- **Session end:** write one curated `notebook.md` entry — what was done, what broke, how
-  long it took, open questions. This file is the video's script skeleton, so it carries the
-  narrative; the machine-written `journal/` carries the raw change record.
+- **Session end:** Abhi types `/shutdown`. Survey the working tree, reconcile every
+  changed path (asking about anything half-finished before it lands in a PR), capture
+  findings that live outside the repo, then update `notebook.md` (one curated entry —
+  this is the video's script skeleton, so it carries the narrative), `PLAN.md` §6, and
+  `Bug_Backlog.md`. Finish with a commit message and PR body. **Never commit, stage,
+  push, or open the PR** — Abhi does those.
 - Bugs found mid-session go to `Bug_Backlog.md` immediately, with priority.
+
+## Git workflow
+
+- **Work happens on a session branch, never on `main`.** Name it after the `PLAN.md` §6
+  roadmap row: `session-02-gatt-enumeration`. Branch, roadmap row, and `notebook.md`
+  entry then share one number.
+- **`main` is the hub's deployment target.** The hub has `~/projectring` checked out on
+  `main` and will eventually run `hub/sync.py` from it under a systemd timer. Anything
+  merged to `main` is assumed runnable; half-finished work stays on the branch.
+- **Squash-merge the PR at session end**, so `main` carries one commit per session.
+- Keep the process thin: no PR templates, no required checks, no self-review ceremony.
+  The value is the diff as a self-review surface and a clean `main` — nothing more.
+- No `Co-Authored-By` trailer on commits in this repo.
 
 ## Style
 
@@ -143,4 +159,3 @@ hub sync. That number sets sync cadence, the battery ceiling, and how urgent B i
   ~2 weeks of real baseline data exist.
 - Prefer editing existing files over creating new ones; no speculative modules.
 - Language guidelines live in `.claude/skills/` (`python-engineering`, `cpp-embedded`).
-- Git: no `Co-Authored-By` trailer on commits in this repo.

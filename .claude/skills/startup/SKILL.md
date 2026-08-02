@@ -1,9 +1,9 @@
 ---
-name: start-up
-description: Session-start briefing for the RavenX Smart Ring project. Use whenever Abhi types "/start-up", "start-up", or otherwise opens a working session and asks where things stand or what to work on today. Reads the repo state, notebook, and bug backlog, then produces last session's summary, today's baseline goal, stretch goals, open P1 bugs, and a prose implementation strategy. Explains the approach and gives starting ideas — never writes the code.
+name: startup
+description: Session-start briefing for the RavenX Smart Ring project. Use whenever Abhi types "/startup", "startup", or otherwise opens a working session and asks where things stand or what to work on today. Reads the repo state, notebook, and bug backlog, then produces last session's summary, today's baseline goal, stretch goals, open P1 bugs, and a prose implementation strategy. Explains the approach and gives starting ideas — never writes the code.
 ---
 
-# start-up
+# startup
 
 The session-opening ritual. Abhi works in 2–4 hour sessions, roughly twice a weekend
 plus one midweek. The job of this skill is to get him from cold start to writing code
@@ -18,8 +18,10 @@ are fine; new implementation is not.
 1. `notebook.md` — the last dated entry is what happened most recently.
 2. `Bug_Backlog.md` — every **P1** and any **RISK** relevant to today's work.
 3. `PLAN.md` §6 session roadmap — which numbered session is next.
-4. `git log --oneline -10` and `git status` — what actually landed versus what the
-   notebook claims. The working tree is the source of truth; the notebook is a memoir.
+4. `git log --oneline -10`, `git status`, and `git branch --show-current` — what actually
+   landed versus what the notebook claims. The working tree is the source of truth; the
+   notebook is a memoir. If the current branch is `main`, remind him to cut a session
+   branch before writing code — `main` is the hub's deployment target.
 5. The scaffolded files for the upcoming session's area, so the strategy references
    real function names rather than invented ones.
 
@@ -64,7 +66,8 @@ return, and what "correct" looks like when he runs it.
 ### 6. First move
 
 One concrete action to start with. Cold starts are the expensive part of a short
-session; end by removing that friction.
+session; end by removing that friction. If no session branch exists yet, cutting it
+is the first move.
 
 ## Rules
 
