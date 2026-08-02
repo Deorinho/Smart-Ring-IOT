@@ -1,43 +1,37 @@
 ---
 name: python-engineering
-description: Python engineering guidelines for this repository and its owner. Use this skill whenever writing, reviewing, refactoring, or designing ANY Python code — parsers, services, analytics, tests, scripts, FastAPI routes, one-off tools — even if the task seems too small to need guidelines. Also use when choosing dependencies, structuring modules, designing APIs between components, or deciding how to test something in Python.
+description: Python engineering guidelines for this repository and its owner. Use this skill whenever writing, reviewing, refactoring, or designing ANY Python code — parsers, services, analytics, scripts, FastAPI routes, one-off tools — even if the task seems too small to need guidelines. Also use when choosing dependencies, structuring modules, or designing APIs between components.
 ---
 
 # Python engineering guidelines
 
 ## Operator profile — how the owner thinks
 
-Abhi is a Python test engineer working on satellites. Two lenses dominate his
-analysis of any problem: **efficiency** (least code, least machinery, least
-runtime waste that still solves the problem) and **dependency** (what relies on
-what — in the package sense, the architectural sense, and the "what breaks if
-this breaks" sense). Code written for him should survive both lenses. When two
-designs are equivalent, pick the one with fewer moving parts and a clearer
-dependency arrow.
+Abhi is an embedded software engineer working on satellites, developing
+exclusively in C++ and Python. Two lenses dominate his analysis of any
+problem: **efficiency** (least code, least machinery, least runtime waste that
+still solves the problem) and **dependency** (what relies on what — in the
+package sense, the architectural sense, and the "what breaks if this breaks"
+sense). Code written for him should survive both lenses. When two designs are
+equivalent, pick the one with fewer moving parts and a clearer dependency
+arrow.
+
+Development priority is working code first: implement, then test if and when
+testing is asked for. Don't default to test-first, don't propose test
+scaffolding unprompted, and don't gate implementation work on a test plan
+existing first.
 
 ## Core rules
-
-### Tests are the design tool, not the afterthought
-
-- pytest-first: for any non-trivial function, sketch the test (or the fixture)
-  before or alongside the implementation. If it's hard to test, the design is
-  wrong — fix the design, don't write a clever test.
-- **Fixtures over mocks.** Real captured data in JSON test vectors beats
-  MagicMock every time. Mocks encode assumptions; fixtures encode reality.
-  Reserve mocking for genuine externalities (network, time, radios).
-- Use `pytest.mark.parametrize` to run one test body over many fixture cases.
-- Every bug fixed gets a regression fixture reproducing it before the fix lands.
-- Tests must be deterministic: no sleeps for timing, no wall-clock dependence
-  (inject clocks), no ordering dependence between tests.
 
 ### Pure core, thin I/O shell
 
 - Business logic (parsing, analytics, scoring) lives in pure functions:
-  bytes/values in, values out, no I/O, no globals, no hidden state. This is
-  what makes fixture-based testing possible.
+  bytes/values in, values out, no I/O, no globals, no hidden state. This keeps
+  the core easy to reason about and easy to test later, if and when that's
+  wanted.
 - I/O (BLE, DB, HTTP, filesystem) lives in thin adapter layers that call the
   pure core. The adapter is boring on purpose; the core is where correctness
-  lives and where tests concentrate.
+  lives.
 
 ### Dependency minimalism
 
@@ -67,8 +61,7 @@ dependency arrow.
   library's own). An awaited call with no timeout is a hang waiting to happen.
 - No fire-and-forget tasks: every created task is awaited, gathered, or
   attached to explicit lifecycle management with error logging.
-- Keep async at the edges; pure core functions stay synchronous and testable
-  without an event loop.
+- Keep async at the edges; pure core functions stay synchronous.
 
 ### Data pipelines
 
@@ -88,4 +81,4 @@ dependency arrow.
 ## References (consult, don't inline)
 
 - PEP 8 (style), PEP 20 (philosophy — "explicit is better than implicit" is
-  the house motto), pytest docs (fixtures, parametrize), `sqlite3` docs.
+  the house motto), `sqlite3` docs.

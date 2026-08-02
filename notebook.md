@@ -69,3 +69,146 @@ Session log — date, what worked, what broke, how long it took. This file is th
   session (out of scope, docs-only).
 - No implementation code written this session, per explicit instruction. Next: Abhi
   reviews DESIGN_01's open questions; Task 1 implementation waits on that review.
+
+## 2026-07-19 — WAR_ROOM ingest: two-room sync workflow documented (WR-2026-07-19-01, -02)
+
+- Applied a WAR_ROOM block via the `ingest` skill, encoding the two-room sync
+  workflow itself into `CLAUDE.md` so it outlives chat memory: `run-project-routine`
+  (Planning Room) stages settled decisions as a block; `ingest` (Execution Room)
+  applies it idempotently by entry ID, authors this notebook entry, and archives
+  the block in `WAR_ROOM.md`, which it alone owns.
+- Added `WAR_ROOM.md` as a listed source-of-truth doc in `CLAUDE.md` so the ledger
+  is discoverable alongside `PLAN.md`, `RESOURCES.md`, `HUB_SETUP.md`, and
+  `notebook.md`.
+
+## 2026-08-02 — Project reset: hardware in hand, roles locked, architecture chosen
+
+**Hardware reality (supersedes everything dated July):** both rings arrived. Roles
+**reversed** from the July plan and this is final — **R06 sz 10 = DAILY + DEV**
+(better fit, worn every day, the ring the hub is built against); **R09 sz 12 =
+SHOWCASE**, used for the YouTube video. The gated third-ring purchase is cancelled;
+end state is both rings running the same software, then one chosen for teardown.
+
+- R09 has been running on the stock QRing app for initial evaluation. It stays there
+  for now as the **validation oracle** — hub-computed numbers get diffed against
+  vendor-computed ones on the same wrist-days, then it migrates to the hub at the end.
+- **R06 has never been connected to anything.** Factory-virgin: its RTC has never
+  been set. First hub connect must **dump the raw log before writing the clock** —
+  a one-shot observation (does a virgin ring log at all? what epoch? does time-set
+  wipe the buffer?). The R09 cannot substitute; QRing already time-set it.
+- Empirical confirmation of the battery hypothesis: enabling all QRing metric-gathering
+  functions on the R09 drained it fast. Consistent with PPG optical duty cycle, not
+  MCU compute, being the dominant draw. Offloading computation to the hub saves
+  almost nothing; sensing cadence is the lever.
+
+**Buffer-depth experiment — STARTED.** R06 put on at **2026-08-02 00:30 local
+(04:30 UTC)**, fully charged, synced to nothing. Unknown at start: how many days the
+onboard log retains. This number sets sync cadence, the battery ceiling, and whether
+the remote relay is a necessity or a convenience. Measured on first successful hub sync.
+
+**Decisions locked this session:**
+
+- **Architecture A now, B next.** A = single hub, no relay, accept data gaps on long
+  trips. B = ESP32-C3 satellite at the second location. Peer-node option (C, a Pi-class
+  box running the same Python) was costed as cheaper and faster but **declined
+  deliberately** — the embedded firmware work is wanted for its own sake.
+- **Schema is generic, not ring-shaped.** Scalar time series in one table keyed by
+  `(source, metric, ts_utc)`; structured events (sleep sessions, workouts) get their
+  own tables rather than being forced into scalar rows. Rationale: the hub is a
+  personal telemetry store whose first source happens to be a ring — future hub
+  projects must not start from zero.
+- **Metric priority:** sleep, activity, and heart rate first. SpO2 and VO2max
+  deprioritized (revisit if running becomes a hobby). Composite scores stay deferred.
+- **Sync cadence 3×/day**, down from the shelved plan's ~20×/day — that cadence was
+  tuned for dashboard freshness, which is the opposite of the stated priority.
+- **Working split:** Abhi writes `protocol/` parsers, the BLE sync service, and the
+  storage layer. Claude scaffolds signatures/TODOs, owns dashboard + FastAPI plumbing
+  and all boilerplate, and on bugs narrows to a function/line range without solving.
+
+**Removed:** `TASKS.md`, `DESIGN_01_hub_environment_verification.md`, `WAR_ROOM.md`,
+and the `ingest` / `run-project-routine` skills. The two-room sync ceremony is retired
+— process machinery had outgrown a repo containing zero lines of code. Git history
+retained deliberately (dated evidence for the video).
+
+**Doc drift found during the audit:** the July 18 fleet decision was applied to
+PLAN.md's status line but never swept through §2, §5, §6, or the BOM — seven live
+contradictions, including three places still calling the R10 the daily driver. README
+still described a fleet that was never purchased. Root cause: docs with no code to
+anchor them drift silently. PLAN.md and CLAUDE.md are being rewritten against reality.
+
+### Hub build-out — session 1 (~4 h, ended 01:30)
+
+Goal was HUB_SETUP.md §1–4 on the 2014 MacBook Air. **Achieved, plus the real prize:
+the hub can see the ring.**
+
+**The win:** `BleakScanner.discover()` on the hub returned
+`('81:5F:4A:87:D2:9C', 'R06_D29C')`. Kernel → BlueZ → Python all agree the ring exists,
+with no vendor app anywhere in the path. Screenshotted — this is the opening shot of the
+video. Noted: the advertised name encodes the last two bytes of the MAC (`D2:9C`),
+which indicates a **fixed** device address rather than a rotating private one, so it's
+safe as a permanent database key. Re-verify in a week.
+
+**What broke, in order — most of the session was here, not in the setup itself:**
+
+1. `ssh-copy-id` failed with `Permission denied` at *connect*, not at auth. That
+   distinction was the diagnosis: the TCP socket was blocked, not the credentials
+   rejected. Cause was **Mullvad blocking LAN traffic** (local network sharing is off
+   by default). Then it changed to a timeout, which meant the desktop side was fixed
+   and the hub side still wasn't.
+2. Decision: **Mullvad stays on the hub.** Flagged that Mullvad and Tailscale both
+   manage routing and will conflict when Tailscale goes in next session → Bug_Backlog
+   R-001. Not a surprise to be discovered mid-session later.
+3. `python3 -m venv` failed — Debian/Ubuntu split `ensurepip` out. `python3.12-venv`
+   needed. Wasted a step because the SSH detour skipped past HUB_SETUP.md §4's apt line.
+4. First scan raised `BleakBluetoothNotAvailableError: POWERED_OFF`. `dmesg` had already
+   proven the controller was healthy (`BCM: chip id 73 build 1126`, `BCM20702B0 @ 20 MHz`,
+   zero `command tx timeout` errors) — so the Broadcom firmware archaeology I'd braced
+   for wasn't needed. The adapter was just soft-powered off.
+5. **Closing the lid suspended the machine** and killed the SSH session mid-work — §3
+   hadn't been done yet. Fixed with all three layers: `logind.conf`, Cinnamon's power
+   manager (which overrides logind while a desktop session exists), and masking
+   `sleep.target`/`suspend.target`/`hibernate.target`/`hybrid-sleep.target`. Verified:
+   lid closed, still reachable over SSH.
+
+**Findings worth keeping:**
+
+- `dmesg` shows the Bluetooth stack initializing at **43 s** into boot while the USB
+  device enumerates at 2.8 s. A sync service starting earlier finds no adapter — the
+  classic "works by hand, never after a reboot" bug. Logged as R-005; `ring-sync.service`
+  needs `After=bluetooth.target` and tolerance for an adapter that isn't ready.
+- Hub has **bleak 3.0.2**, a new major release. `colmi_r02_client` targets bleak 0.2x and
+  will conflict if installed. Mitigation: read it as source reference for packet layouts,
+  never as a runtime dependency. Logged as R-006, and it matches the dependency-minimalism
+  rule anyway.
+- The hub belongs on **5 GHz WiFi**: the Broadcom chip shares one 2.4 GHz radio between
+  WiFi and Bluetooth, and 2.4 GHz degrades BLE scanning intermittently — the worst kind
+  of failure to debug later. Logged as R-003.
+
+**Repo work this session:**
+
+- Retired `TASKS.md`, `DESIGN_01`, `WAR_ROOM.md`, and the `ingest` /
+  `run-project-routine` skills. The process machinery had outgrown a repo with zero
+  lines of code — a 140-line design doc for a 60-line script was the tell.
+- Rewrote `CLAUDE.md`, `PLAN.md`, and `README.md` against reality. `PLAN.md` now carries
+  a numbered **session roadmap** rather than open-ended phases, since work happens in
+  2–4 hour weekend blocks.
+- Created `Bug_Backlog.md` (P1/P2/P3 + a RISK tier), seeded with six real risks.
+- Created `.claude/skills/start-up/` — the session-open briefing ritual.
+- First code in the repo's history: `hub/schema.sql` (generic telemetry store),
+  `hub/config.py` (MAC, sensing policy, cadence), and scaffolds for `protocol/packets.py`
+  and `protocol/commands.py`. Scaffolds carry signatures, contracts, and traps — no
+  bodies; Abhi fills those.
+- Two schema decisions worth remembering: `samples`' primary key
+  `(source_id, metric, ts_utc)` **is** the idempotency guarantee, so `INSERT OR IGNORE`
+  makes re-syncing free and Architecture B's ingest needs no special casing. And
+  `raw_payloads` archives every packet verbatim forever — reverse-engineering an
+  undocumented protocol means an improved parser should re-read August in December
+  rather than having lost it.
+
+**Open for session 2:** GATT enumeration on `R06_D29C`, confirming the TODO(confirm)
+UUIDs and opcodes in `protocol/commands.py`, a battery-command round trip as the cheapest
+proof of the write/notify path — and **dumping the raw log before setting the clock**,
+which is a one-shot observation on a factory-virgin ring.
+
+**Not yet built:** `hub/db.py`, `hub/sync.py`, `hub/api.py`, `dashboard/`, and the
+30-minute journal automation.

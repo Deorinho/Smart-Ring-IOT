@@ -1,0 +1,20 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Data — the SQLite store lives outside the tree on the hub, but never risk it
+*.db
+*.db-wal
+*.db-shm
+projectring-data/
+
+# Local environment
+.env
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
