@@ -158,7 +158,11 @@ async def run_probe(client: BleakClient, probe: dict, collector: Collector) -> d
     return {
         "label": probe["label"],
         "requested_ts": probe["ts"],
-        "requested_iso": datetime.fromtimestamp(probe["ts"]).isoformat(),
+        # UTC, matching how the probe was built — rendering this in local time made a
+        # correct UTC-midnight request look like it landed on the previous evening.
+        "requested_iso": datetime.fromtimestamp(
+            probe["ts"], timezone.utc
+        ).isoformat(),
         "request_hex": request.hex(" "),
         "frame_count": len(collector.frames),
         "frames": collector.frames,

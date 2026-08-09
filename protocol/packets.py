@@ -30,9 +30,23 @@ PACKET_LEN = 16
 CHECKSUM_INDEX = 15
 
 # --- Heart-rate log layout (colmi_r02_client `hr.py`, MIT — unverified here) ---
+# CONFIRMED 2026-08-09 against a real 24-frame burst from R06_D29C:
+#
+#   sub_type 0   header:    byte[2] = total frames, byte[3] = slot interval (5 min)
+#   sub_type 1   `15 01 00 c3 77 6a 00 ...`
+#                bytes[2:6] = 4-byte LE timestamp (the requested day start, echoed)
+#                bytes[6:15] = 9 values
+#   sub_type 2+  bytes[2:15] = 13 values
+#
+# The timestamp precedes the values; colmi_r02_client's description reads the other
+# way round, and taking it literally parsed the timestamp bytes as heart rates
+# (0xc3 = 195 bpm, from a byte that was never a measurement).
 SAMPLE_INTERVAL_MINUTES = 5
-HR_VALUES_IN_FIRST_FRAME = 9    # frame sub_type 1: 9 values, then a 4-byte timestamp
-HR_VALUES_PER_FRAME = 13        # frames sub_type >= 2: 13 values, filling bytes 2..14
+HR_TIMESTAMP_SLICE = slice(2, 6)
+HR_FIRST_FRAME_VALUE_OFFSET = 6
+HR_VALUES_IN_FIRST_FRAME = 9
+HR_FRAME_VALUE_OFFSET = 2
+HR_VALUES_PER_FRAME = 13
 
 # CONFIRMED 2026-08-08 against R06_D29C: a day with nothing stored replies with a
 # single frame `15 ff 00 ... 14` — sub_type 0xFF and a zero payload. Not documented
@@ -202,10 +216,12 @@ def parse_heart_rate_log(
 
         if sub_type == 1:
             start = 0
-            values = packet[2 : 2 + HR_VALUES_IN_FIRST_FRAME]
+            offset = HR_FIRST_FRAME_VALUE_OFFSET
+            values = packet[offset : offset + HR_VALUES_IN_FIRST_FRAME]
         else:
             start = HR_VALUES_IN_FIRST_FRAME + (sub_type - 2) * HR_VALUES_PER_FRAME
-            values = packet[2 : 2 + HR_VALUES_PER_FRAME]
+            offset = HR_FRAME_VALUE_OFFSET
+            values = packet[offset : offset + HR_VALUES_PER_FRAME]
 
         for offset, bpm in enumerate(values):
             if bpm == 0:
@@ -225,20 +241,21 @@ def parse_heart_rate_log(
 
 
 def parse_hr_log_ring_timestamp(packets: tuple[bytes, ...]) -> int | None:
-    """Extract the ring's OWN timestamp from a heart-rate burst, or None.
+    """Extract the day-start timestamp the ring reports in a heart-rate burst.
 
-    Frame `sub_type == 1` carries a 4-byte little-endian timestamp after its nine
-    values. That field is the ring's opinion of when this data is from — which, on a
-    unit whose RTC has never been set, is exactly the quantity Bug_Backlog R-002 is
-    about.
+    Frame `sub_type == 1` carries a 4-byte little-endian timestamp at bytes 2–5,
+    **before** its nine values.
 
-    Kept separate from `parse_heart_rate_log` on purpose: that function trusts the
-    caller's corrected `day_start_utc`, while this one reports what the ring believes.
-    Comparing the two is how `sync_runs.clock_offset_s` gets filled in.
+    Note what this is and isn't. Measured against R06_D29C it echoes back the exact
+    timestamp that was requested, so it confirms the ring understood the request — but
+    it is **not** the ring's independent opinion of the current time, and it therefore
+    does not by itself supply `sync_runs.clock_offset_s`. Establishing real clock drift
+    (Bug_Backlog R-002) needs a different source: compare when samples appear against
+    events whose wall-clock time is known.
     """
     for packet in packets:
         if len(packet) == PACKET_LEN and packet[1] == 1:
-            return int.from_bytes(packet[11:15], "little")
+            return int.from_bytes(packet[HR_TIMESTAMP_SLICE], "little")
     return None
 
 

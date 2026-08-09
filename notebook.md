@@ -406,3 +406,101 @@ drain rate at HR=30min to compare against the 12%/day factory baseline.
 
 **Next session opens by probing UTC midnight for 2026-08-09** — if a night of heart rate
 comes back, the read path is proven end to end and session 4 becomes storage.
+
+## 2026-08-09 — Session 4: the first real heartbeat (~35 min)
+
+**The read path works end to end.** A probe at UTC midnight for 2026-08-09 came back
+with **24 frames** instead of the `0xFF` sentinel, and after one offset fix it parsed
+into 28 heart-rate samples that look unmistakably like a person.
+
+### The burst
+
+```text
+15 00 18 05 00 ... 32    sub_type 0 = header: 24 frames, 5-minute slots
+15 01 00 c3 77 6a 00 ... sub_type 1 = timestamp + 9 values
+15 02 00 00 ... 17       sub_type 2+ = 13 values each
+```
+
+Header decoded exactly as scaffolded, sub_types 1–23 with none missing. **And `byte[3] =
+0x05` resolved an older mystery:** it is the log's *slot* granularity, the same
+undocumented `byte[4]` seen in the HR-settings frame. The day is always 288 five-minute
+slots regardless of the measurement interval — at 30-minute measurement only one slot in
+six is filled and the rest are zeros. That makes "zero means not measured" load-bearing
+rather than pedantic.
+
+### The bug, and how it announced itself
+
+First parse gave 31 samples, `min=51 max=195`, and an hourly bucket at 20:00 local — a
+time before logging was even enabled. The ring's embedded timestamp read `0`.
+
+Both symptoms, one cause: **the 4-byte timestamp precedes the nine values, not follows
+them.** colmi_r02_client's description reads the other way round, and taking it
+literally parsed the timestamp bytes as heart rates. The three phantom samples were
+`0xc3 = 195`, `0x77 = 119`, `0x6a = 106` — **their mean is exactly 140.0**, which matched
+the anomalous bucket to one decimal place. The "ring timestamp" read zero because bytes
+11–14 are padding.
+
+Fixed offsets: timestamp at bytes 2–5, first-frame values at bytes 6–14.
+
+### Why the corrected result is trustworthy
+
+```text
+28 non-zero samples   min 51   max 115   mean 81.9 bpm
+first 07:30 UTC   last 21:00 UTC   = 13.5 h
+13.5 h x 2/hour + 1 = 28
+ring's own ts: 1786233600 = UTC midnight 2026-08-09
+```
+
+The sample count is not approximately right, it is arithmetically exact — which means
+measurement interval, slot arithmetic, frame reassembly and timestamp anchoring are all
+correct *simultaneously*. Three independent things agreeing is much stronger evidence
+than any one of them looking plausible.
+
+The curve reads as a life: 115 bpm winding down at 03:00 local, a night bottoming at
+**51 bpm resting**, a step up at midday, 84–106 through a working afternoon.
+
+### Corrections and findings
+
+- **R-002 expectation walked back.** The frame-1 timestamp *echoes the requested day
+  start*; it is not the ring's independent clock. It confirms the ring understood the
+  request but supplies no drift measurement. Real clock offset needs a different source
+  — comparing when samples appear against events of known wall-clock time.
+- **Battery: 100% → 96% in 14.3 h at HR=30min (~6.7%/day)** against ~13%/day during the
+  factory week *with HR logging disabled*. Roughly half the drain while doing strictly
+  more sensing. Rate is provisional — voltage-based gauges are non-linear near full
+  charge — but the direction sharpens R-012: something was running that week which is
+  not running now. Only the HR settings (`0x16`) have ever been queried; the SpO2 /
+  stress / HRV / temperature enable flags are the next target, and it is a battery
+  question rather than a features question.
+
+### What broke this session
+
+- **Ran the inspector twice against unpushed code.** Byte-identical output both times
+  was the giveaway — not a partial fix but no fix at all. The parser change was sitting
+  uncommitted on the desktop while the hub ran the old offsets.
+- `requested_iso` rendered in local time, making a correct UTC-midnight request look
+  like it landed the previous evening. Fixed to UTC.
+- Getting captures off the hub still needs `scp` (R-013). Two files came across; the
+  hub's untracked copies were removed with `git clean` and restored by pull.
+- The capture commit `c08b8f2` carries a mangled message — a pasted file listing. Left
+  as-is deliberately: **squash-merging this PR discards it**, which is what `CLAUDE.md`
+  has asked for since PR #1 and what the two previous merge commits skipped.
+
+### Built
+
+`tools/inspect_capture.py` — decodes a saved capture offline: verifies structure
+(header, sub_type sequencing, missing frames, slot capacity, embedded timestamp) *before*
+parsing values, then reports samples with an hourly mean in local time. Structure first
+is deliberate; a plausible heart rate built on a misread header is worse than an obvious
+failure. It runs with no radio and no battery, which is the entire justification for
+archiving raw frames.
+
+**Archive state:** five capture files, 84 frames, zero checksum failures.
+
+### Open after session 4
+
+- Buffer depth — finally measurable. Probe 2026-08-09 again tomorrow and see whether
+  yesterday survives. That number has gated Architecture B since session 1.
+- Storage. 28 parsed `Sample` objects exist in memory and `hub/schema.sql` has never
+  been executed.
+- Sleep (R-008) remains the largest unmapped piece of the protocol.
