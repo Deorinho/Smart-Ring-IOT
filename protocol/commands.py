@@ -10,7 +10,8 @@ touching a parser, which is what "dumb radio, smart hub" actually requires.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
+
 from protocol.packets import build_packet
 
 # --- GATT interface --------------------------------------------------------
@@ -42,25 +43,56 @@ CMD_BATTERY = 0x03
 # From colmi_r02_client (MIT) `hr.py`, 2026-08-08. Not yet exercised against this ring.
 CMD_READ_HEART_RATE = 0x15   # 21
 
-# TODO(confirm): still unverified. Cross-check colmi_r02_client `set_time.py` — and see
-# the DANGER note on set_time() before sending this one to R06_D29C.
+# From colmi_r02_client (MIT) `set_time.py`, 2026-08-08. See the DANGER note on
+# set_time() before sending this one to R06_D29C.
 CMD_SET_TIME = 0x01
 
+LANGUAGE_ENGLISH = 0x01
+LANGUAGE_CHINESE = 0x00
 
-def set_time(now_utc: datetime) -> bytes:
+
+def _bcd(value: int) -> int:
+    """Encode a two-digit decimal as binary-coded decimal: 26 -> 0x26.
+
+    BCD stores each decimal digit in its own nibble, so the byte reads as the decimal
+    number in hex. Cheap for an MCU with no division, and common in RTC hardware.
+    """
+    if not 0 <= value <= 99:
+        raise ValueError(f"BCD encodes 0-99, got {value}")
+    return ((value // 10) << 4) | (value % 10)
+
+
+def set_time(now_utc: datetime, language: int = LANGUAGE_ENGLISH) -> bytes:
     """Build the packet that sets the ring's RTC.
 
-    DANGER — read CLAUDE.md before calling this on R06_D29C. The ring is
-    factory-virgin and its clock has never been set. The raw log MUST be dumped
-    first: setting the time is a one-way door, and some firmware wipes the buffer on
-    a clock write. This is the only chance to observe how a never-paired ring
-    timestamps its own data.
+    DANGER — this is a one-way door on R06_D29C. The ring is factory-virgin and its
+    clock has never been set, which is a state that exists exactly once and cannot be
+    recreated. The raw log MUST be captured first: some firmware wipes the onboard
+    buffer on a clock write. `tools/set_ring_clock.py` enforces that ordering
+    mechanically by refusing to run without a capture on disk — use it rather than
+    calling this directly.
 
-    Note the ring likely expects LOCAL time, not UTC, because the vendor app sets it
-    from the phone's wall clock. Confirm which, then convert exactly once here — the
-    rest of the system stays UTC end to end.
+    Payload is 7 bytes (colmi_r02_client `set_time.py`, MIT): year, month, day, hour,
+    minute, second — each BCD-encoded — then a language byte. Year is `year % 2000`,
+    so 2026 becomes 0x26 and the encoding dies in 2100.
+
+    **The ring wants UTC.** That is worth stating plainly because it is the opposite
+    of what a vendor app setting the clock from a phone would suggest, and it means
+    this project has no local-time conversion anywhere below the display layer.
     """
-    raise NotImplementedError
+    ts = now_utc.astimezone(timezone.utc)
+    payload = bytes(
+        [
+            _bcd(ts.year % 2000),
+            _bcd(ts.month),
+            _bcd(ts.day),
+            _bcd(ts.hour),
+            _bcd(ts.minute),
+            _bcd(ts.second),
+            language,
+        ]
+    )
+    return build_packet(CMD_SET_TIME, payload)
 
 
 def request_battery() -> bytes:

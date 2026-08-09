@@ -22,11 +22,17 @@ work that has NOT been verified against your ring. Verify before trusting it.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 
 # --- Framing ---------------------------------------------------------------
 # QRing-family packets are fixed-length: one command byte, payload, one checksum byte.
 PACKET_LEN = 16
 CHECKSUM_INDEX = 15
+
+# --- Heart-rate log layout (colmi_r02_client `hr.py`, MIT — unverified here) ---
+SAMPLE_INTERVAL_MINUTES = 5
+HR_VALUES_IN_FIRST_FRAME = 9    # frame sub_type 1: 9 values, then a 4-byte timestamp
+HR_VALUES_PER_FRAME = 13        # frames sub_type >= 2: 13 values, filling bytes 2..14
 
 
 @dataclass(frozen=True)
@@ -125,8 +131,72 @@ def parse_heart_rate_log(
     The trap: a zero is **"no measurement taken"**, not a heart rate of zero. Drop
     those slots rather than storing them, or every rollup built on top will be dragged
     toward zero by gaps that were never real readings.
+
+    Two deliberate departures from the reference implementation:
+
+    * **Slot indices come from `sub_type`, not from concatenation order.** Frames can
+      arrive out of order or go missing; concatenating whatever showed up would shift
+      every later sample in time without any error surfacing. Deriving the index from
+      the frame number means a dropped frame costs you that frame's samples and
+      nothing else.
+    * **No fixed 288-sample assumption.** 9 + 13k never equals 288 — a complete burst
+      yields 282 — so 288 is a pad-to-fixed-array detail upstream, not a wire fact.
+      This reads whatever arrives.
     """
-    raise NotImplementedError
+    frames: dict[int, bytes] = {}
+    for packet in packets:
+        if len(packet) == PACKET_LEN and packet[1] not in frames:
+            frames[packet[1]] = packet
+
+    base = datetime.fromisoformat(day_start_utc.replace("Z", "+00:00")).astimezone(
+        timezone.utc
+    )
+
+    samples: list[Sample] = []
+    for sub_type, packet in sorted(frames.items()):
+        if sub_type < 1:
+            continue  # sub_type 0 is the header: frame count and interval, no values
+
+        if sub_type == 1:
+            start = 0
+            values = packet[2 : 2 + HR_VALUES_IN_FIRST_FRAME]
+        else:
+            start = HR_VALUES_IN_FIRST_FRAME + (sub_type - 2) * HR_VALUES_PER_FRAME
+            values = packet[2 : 2 + HR_VALUES_PER_FRAME]
+
+        for offset, bpm in enumerate(values):
+            if bpm == 0:
+                continue
+            ts = base + timedelta(
+                minutes=(start + offset) * SAMPLE_INTERVAL_MINUTES
+            )
+            samples.append(
+                Sample(
+                    metric="heart_rate",
+                    ts_utc=ts.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    value=float(bpm),
+                )
+            )
+
+    return tuple(samples)
+
+
+def parse_hr_log_ring_timestamp(packets: tuple[bytes, ...]) -> int | None:
+    """Extract the ring's OWN timestamp from a heart-rate burst, or None.
+
+    Frame `sub_type == 1` carries a 4-byte little-endian timestamp after its nine
+    values. That field is the ring's opinion of when this data is from — which, on a
+    unit whose RTC has never been set, is exactly the quantity Bug_Backlog R-002 is
+    about.
+
+    Kept separate from `parse_heart_rate_log` on purpose: that function trusts the
+    caller's corrected `day_start_utc`, while this one reports what the ring believes.
+    Comparing the two is how `sync_runs.clock_offset_s` gets filled in.
+    """
+    for packet in packets:
+        if len(packet) == PACKET_LEN and packet[1] == 1:
+            return int.from_bytes(packet[11:15], "little")
+    return None
 
 
 def parse_steps(packet: bytes, day_start_utc: str) -> tuple[Sample, ...]:

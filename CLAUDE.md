@@ -157,6 +157,11 @@ hub sync. That number sets sync cadence, the battery ceiling, and how urgent B i
   `main` and will eventually run `hub/sync.py` from it under a systemd timer. Anything
   merged to `main` is assumed runnable; half-finished work stays on the branch.
 - **Squash-merge the PR at session end**, so `main` carries one commit per session.
+- **End any response that leaves tracked files modified with a paste-ready commit
+  message.** Don't wait to be asked. Cover everything currently uncommitted in one
+  message rather than emitting a fragment per file, and follow the `git-commit` skill:
+  read the real diff, quantify, invent no motivation, no `Co-Authored-By`. Drafting
+  only — never run the commit.
 - Keep the process thin: no PR templates, no required checks, no self-review ceremony.
   The value is the diff as a self-review surface and a clean `main` — nothing more.
 - No `Co-Authored-By` trailer on commits in this repo.
