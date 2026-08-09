@@ -34,6 +34,11 @@ SAMPLE_INTERVAL_MINUTES = 5
 HR_VALUES_IN_FIRST_FRAME = 9    # frame sub_type 1: 9 values, then a 4-byte timestamp
 HR_VALUES_PER_FRAME = 13        # frames sub_type >= 2: 13 values, filling bytes 2..14
 
+# CONFIRMED 2026-08-08 against R06_D29C: a day with nothing stored replies with a
+# single frame `15 ff 00 ... 14` — sub_type 0xFF and a zero payload. Not documented
+# upstream. Treating it as a data frame would place samples ~11 days in the future.
+NO_DATA_SUB_TYPE = 0xFF
+
 
 @dataclass(frozen=True)
 class Sample:
@@ -47,6 +52,18 @@ class Sample:
     metric: str
     ts_utc: str
     value: float
+
+
+@dataclass(frozen=True)
+class HeartRateLogSettings:
+    """The ring's automatic heart-rate logging configuration.
+
+    `interval_minutes` is the dominant term in the ring's power budget, so this is
+    effectively the battery contract as the ring currently holds it.
+    """
+
+    enabled: bool
+    interval_minutes: int
 
 
 @dataclass(frozen=True)
@@ -105,6 +122,19 @@ def parse_battery(packet: bytes) -> tuple[int, bool]:
     return percent, is_charging
 
 
+def parse_hr_log_settings(packet: bytes) -> HeartRateLogSettings:
+    """Parse the reply to `commands.request_hr_log_settings`.
+
+    Layout (colmi_r02_client `hr_settings.py`, MIT): byte[2] is the enabled flag and
+    byte[3] is the interval in minutes. The flag encodes **1 for on and 2 for off** —
+    not 0 — so a naive truthiness check reads "disabled" as "enabled".
+    """
+    return HeartRateLogSettings(
+        enabled=packet[2] == 0x01,
+        interval_minutes=packet[3],
+    )
+
+
 def parse_heart_rate_log(
     packets: tuple[bytes, ...], day_start_utc: str
 ) -> tuple[Sample, ...]:
@@ -145,7 +175,11 @@ def parse_heart_rate_log(
     """
     frames: dict[int, bytes] = {}
     for packet in packets:
-        if len(packet) == PACKET_LEN and packet[1] not in frames:
+        if len(packet) != PACKET_LEN:
+            continue
+        if packet[1] == NO_DATA_SUB_TYPE:
+            return ()  # the ring's "nothing stored for that day" reply
+        if packet[1] not in frames:
             frames[packet[1]] = packet
 
     base = datetime.fromisoformat(day_start_utc.replace("Z", "+00:00")).astimezone(

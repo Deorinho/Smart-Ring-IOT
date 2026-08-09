@@ -40,8 +40,23 @@ BULK_TX_CHAR_UUID = "de5bf729-d711-4e47-af26-65e3012a5dc7"   # ring notifies her
 # reply is self-identifying and a single notify handler can dispatch on byte[0].
 CMD_BATTERY = 0x03
 
-# From colmi_r02_client (MIT) `hr.py`, 2026-08-08. Not yet exercised against this ring.
+# CONFIRMED 2026-08-08 against R06_D29C. Every request echoes 0x15 back; a day with no
+# stored data replies with sub_type 0xFF and a zero payload (packets.NO_DATA_SUB_TYPE).
 CMD_READ_HEART_RATE = 0x15   # 21
+
+# HR logging settings (colmi_r02_client `hr_settings.py`, MIT). Sub-command in byte 1.
+CMD_HR_LOG_SETTINGS = 0x16   # 22
+HR_SETTINGS_READ = 0x01
+HR_SETTINGS_WRITE = 0x02
+HR_LOGGING_ENABLED = 0x01
+HR_LOGGING_DISABLED = 0x02   # note: disabled is 2, not 0
+
+# OBSERVED 2026-08-08, not in any public reference: the ring pushes `73 0c 63 01 ...`
+# unprompted — 0x63 = 99% battery, 0x01 = charging — seen when it reached full charge.
+# Two consequences: a notification handler must tolerate frames nobody requested, and
+# there is a push path that can feed the low-battery alerting in Bug_Backlog R-009.
+# Payload beyond battery and charging is unconfirmed.
+CMD_STATUS_PUSH = 0x73
 
 # From colmi_r02_client (MIT) `set_time.py`, 2026-08-08. See the DANGER note on
 # set_time() before sending this one to R06_D29C.
@@ -120,6 +135,35 @@ def request_heart_rate_log(day_start: datetime) -> bytes:
     log at all until its clock is set. Record it and set the clock deliberately.
     """
     raise NotImplementedError
+
+
+def request_hr_log_settings() -> bytes:
+    """Ask whether automatic heart-rate logging is on, and at what interval.
+
+    Read-only and cheap. This is the question that decides why the log is empty: a
+    ring with logging disabled has faithfully recorded nothing, which looks exactly
+    like a ring whose buffer was lost or whose clock was never set.
+    """
+    return build_packet(CMD_HR_LOG_SETTINGS, bytes([HR_SETTINGS_READ]))
+
+
+def set_hr_log_settings(enabled: bool, interval_minutes: int) -> bytes:
+    """Turn automatic heart-rate logging on or off and set its interval.
+
+    **This is the battery contract expressed in bytes** — the single biggest lever on
+    the ring's power draw, since PPG optical duty cycle dominates everything else.
+    `hub.config.DEFAULT_SENSING.hr_interval_minutes` is the project's chosen value.
+
+    Note the enabled encoding is 1 for on and **2 for off**, not 0.
+    """
+    if not 1 <= interval_minutes <= 255:
+        raise ValueError(f"interval must be 1-255 minutes, got {interval_minutes}")
+
+    flag = HR_LOGGING_ENABLED if enabled else HR_LOGGING_DISABLED
+    return build_packet(
+        CMD_HR_LOG_SETTINGS,
+        bytes([HR_SETTINGS_WRITE, flag, interval_minutes]),
+    )
 
 
 def request_sleep_log(day_start: datetime) -> bytes:
