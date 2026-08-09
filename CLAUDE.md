@@ -153,7 +153,7 @@ hub sync. That number sets sync cadence, the battery ceiling, and how urgent B i
 - **Work happens on a session branch, never on `main`.** Name it after the `PLAN.md` §6
   roadmap row: `session-02-gatt-enumeration`. Branch, roadmap row, and `notebook.md`
   entry then share one number.
-- **`main` is the hub's deployment target.** The hub has `~/projectring` checked out on
+- **`main` is the hub's deployment target.** The hub has `~/Projects/RavenXSmartRing-IOT` checked out on
   `main` and will eventually run `hub/sync.py` from it under a systemd timer. Anything
   merged to `main` is assumed runnable; half-finished work stays on the branch.
 - **Squash-merge the PR at session end**, so `main` carries one commit per session.
