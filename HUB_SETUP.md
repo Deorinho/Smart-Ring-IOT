@@ -82,6 +82,13 @@ own keyboard again. Key-based auth recommended:
 ssh-copy-id <user>@<hub-ip>
 ```
 
+**One-click launcher (Windows desktop).** `tools/hub_connect.ps1` opens the session and
+copes with the hub's DHCP address moving: it tries the address remembered under `Host hub`
+in `~/.ssh/config`, then `10.0.0.213`, then sweeps the local /24 for an open port 22 —
+and writes whatever it finds back to `~/.ssh/config`, so plain `ssh hub` stays correct.
+Run `tools/install_hub_shortcut.ps1` once to drop a "RavenX Hub" shortcut on the Desktop.
+Both become obsolete once Tailscale MagicDNS gives the hub a stable name.
+
 ## 3. Verify Bluetooth (the ring's radio path)
 
 The 2014 Air has a Broadcom BT 4.0 chip; Mint usually supports it out of the box.
