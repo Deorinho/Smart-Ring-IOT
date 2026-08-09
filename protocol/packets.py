@@ -128,6 +128,15 @@ def parse_hr_log_settings(packet: bytes) -> HeartRateLogSettings:
     Layout (colmi_r02_client `hr_settings.py`, MIT): byte[2] is the enabled flag and
     byte[3] is the interval in minutes. The flag encodes **1 for on and 2 for off** —
     not 0 — so a naive truthiness check reads "disabled" as "enabled".
+
+    CONFIRMED 2026-08-09: R06_D29C shipped `16 01 02 1e 05 00 ... 3c` — logging
+    **disabled** from the factory, interval already 30 min. **byte[4] = 0x05 is
+    undocumented upstream** and is not parsed here; its value sits suspiciously close
+    to the HR log's 5-minute sample slots, but that is a guess.
+
+    Verified safe: a write sends only bytes 2 and 3, and byte[4] survived unchanged
+    (`16 01 01 1e 05 ... 3b` after enabling). Writes also ack with `16 02 01 ...`, so
+    acceptance can be confirmed rather than assumed.
     """
     return HeartRateLogSettings(
         enabled=packet[2] == 0x01,
