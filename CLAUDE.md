@@ -5,8 +5,18 @@ to a home hub — a 2014 MacBook Air running Linux Mint — which stores, analyz
 serves a PWA dashboard to an iPhone. No cloud, no accounts, no subscriptions; the data
 never leaves hardware Abhi owns.
 
-**Status (2026-08-02):** both rings in hand. Hub build-out in progress (SSH up, Python
-3.12.3 confirmed). No application code written yet.
+**Status (2026-08-08):** both rings in hand; session 2 merged to `main`.
+
+- **Hub:** reachable over SSH with the lid closed, Bluetooth working, Python 3.12.3.
+  Tailscale and systemd units are **not** set up yet.
+- **Protocol:** confirmed against R06_D29C — both vendor GATT services mapped,
+  `CMD_BATTERY = 0x03`, checksum is `sum(data[:15]) & 0xFF` (validated bidirectionally),
+  and replies echo the command byte in position 0 so they are self-identifying.
+- **Hardware:** chipset is **BlueX**, firmware `R06_1.00.06_240921`, hardware `R06_V1.0`.
+  The ATC_RF03 custom-firmware groundwork applies to this unit. The BLE address is burned
+  into the System ID characteristic and cannot rotate.
+- **Running experiment:** the ring has been worn and unsynced since 2026-08-02 00:30 local.
+  Buffer depth is measured on the first log dump.
 
 ## The fleet (final — do not re-litigate)
 

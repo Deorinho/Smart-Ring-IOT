@@ -31,9 +31,14 @@ what the listing claimed — the listing can be wrong even in good faith.
 - **colmi_r02_client** — the reference Python client for the QRing ring family.
   Docs: <https://tahnok.github.io/colmi_r02_client/colmi_r02_client.html>
   Repo: <https://github.com/tahnok/colmi_r02_client>
-  Why: working parser implementations for HR, SpO2, steps, sleep packets; the
-  fastest way to understand the byte layout. Read the source, not just the docs.
-  Use it as a library first; replace pieces with your own code as you learn.
+  License: **MIT** — code may be lifted directly with attribution, not merely read.
+  Why: working parser implementations for battery, heart rate, and steps, plus the
+  HR-logging-interval settings that are this project's main battery lever. The
+  fastest way to understand the byte layout.
+  **Do not install it as a dependency** — it targets bleak 0.2x and the hub runs
+  3.0.2 (Bug_Backlog R-006). Copy what you need into `protocol/` with a source note.
+  **Gaps:** no sleep support (no `sleep.py` at all) and no temperature — both are
+  Gadgetbridge territory, and sleep is this project's top-priority metric.
 
 - **Gadgetbridge — Yawell/Colmi device page** — <https://gadgetbridge.org/gadgets/wearables/yawell/>
   Why: authoritative model matrix (which ring = which hardware = which features),

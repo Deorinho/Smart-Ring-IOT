@@ -39,8 +39,11 @@ BULK_TX_CHAR_UUID = "de5bf729-d711-4e47-af26-65e3012a5dc7"   # ring notifies her
 # reply is self-identifying and a single notify handler can dispatch on byte[0].
 CMD_BATTERY = 0x03
 
-# TODO(confirm): still unverified. Read it out of colmi_r02_client — and see the
-# DANGER note on set_time() before sending this one to R06_D29C.
+# From colmi_r02_client (MIT) `hr.py`, 2026-08-08. Not yet exercised against this ring.
+CMD_READ_HEART_RATE = 0x15   # 21
+
+# TODO(confirm): still unverified. Cross-check colmi_r02_client `set_time.py` — and see
+# the DANGER note on set_time() before sending this one to R06_D29C.
 CMD_SET_TIME = 0x01
 
 
@@ -64,18 +67,41 @@ def request_battery() -> bytes:
     return build_packet(CMD_BATTERY)
 
 
-def request_heart_rate_log(day_offset: int) -> bytes:
-    """Request the stored HR log for a day, where 0 is today and 1 is yesterday.
+def request_heart_rate_log(day_start: datetime) -> bytes:
+    """Request the stored HR log for one day, addressed by absolute timestamp.
 
-    How far back `day_offset` can usefully go IS the buffer-depth measurement that
-    gates Architecture B. Walk it backwards until the ring returns nothing and record
-    the answer — the ring went on 2026-08-02 00:30 local having never synced.
+    Payload is a **4-byte little-endian Unix timestamp** for midnight of the target
+    day (colmi_r02_client `hr.py`, MIT). There is NO day-offset form — the ring is
+    asked for a point on its own timeline, not "N days ago".
+
+    That matters more here than it would on any other ring. **R06_D29C's RTC has never
+    been set**, so its timeline does not start where real-world time starts. Asking for
+    midnight on a 2026 date may address a region of the ring's log that does not exist,
+    and the ring will simply return nothing — which looks identical to a wrong opcode.
+
+    Probing strategy until the ring's epoch is known: try real midnight first, then
+    Unix 0, then 946684800 (2000-01-01), walking forward a few days from each. The
+    first response that arrives carries a 4-byte timestamp in its sub_type-1 packet —
+    that field reveals the ring's frame of reference, and everything else follows.
+
+    If nothing lands at any epoch, that is itself the finding: a virgin ring may not
+    log at all until its clock is set. Record it and set the clock deliberately.
     """
     raise NotImplementedError
 
 
-def request_sleep_log(day_offset: int) -> bytes:
-    """Request the stored sleep record for a day. Same offset convention as above."""
+def request_sleep_log(day_start: datetime) -> bytes:
+    """Request the stored sleep record for one day.
+
+    **colmi_r02_client does not implement sleep at all** — there is no `sleep.py` in
+    that package. Gadgetbridge's Colmi/Yawell classes are the only reference, and the
+    opcode is unknown.
+
+    Two hypotheses worth testing before assuming this command exists in this form:
+    sleep may ride the second vendor service (`BULK_*` below) rather than the command
+    channel, and the addressing may not be per-day at all. Signature mirrors
+    `request_heart_rate_log` for now; change it once the real shape is known.
+    """
     raise NotImplementedError
 
 
@@ -94,5 +120,11 @@ def set_sensing_policy(
     Returns several packets because each knob is typically its own command. Order them
     so that a partial failure leaves the ring MORE conservative, not less — turn
     expensive sensing off first, set intervals after.
+
+    Reference: colmi_r02_client `hr_settings.py` (MIT) covers the HR logging interval,
+    which is the single biggest battery lever. It has no SpO2/stress/HRV equivalents —
+    those come from Gadgetbridge or from observing the QRing app against the R09.
+    See also their `real_time.py`: that is the continuous-streaming mode, by far the
+    most expensive thing the hardware can do. Read it to know what never to enable.
     """
     raise NotImplementedError

@@ -6,9 +6,14 @@ That is what lets you replay `raw_payloads` from the database through a newer pa
 later and get better answers out of bytes you already own.
 
 Sources of truth for the byte layouts, in priority order (RESOURCES.md):
-  1. colmi_r02_client source  — read it, don't depend on it (Bug_Backlog R-006)
-  2. Gadgetbridge Yawell/Colmi device classes — the tiebreaker when 1 is ambiguous
-  3. Your own nRF Connect / bleak captures from R06_D29C — the final authority
+  1. colmi_r02_client source — **MIT licensed**, so code may be lifted directly with
+     attribution, not merely read. Do not add it as a runtime dependency: it targets
+     bleak 0.2x and the hub runs 3.0.2 (Bug_Backlog R-006).
+  2. Gadgetbridge Yawell/Colmi device classes — the tiebreaker when 1 is ambiguous,
+     and the ONLY reference for sleep and temperature, which colmi_r02_client omits.
+  3. Your own bleak captures from R06_D29C — the final authority. Its firmware
+     (`R06_1.00.06_240921`) is newer than the R02-era hardware most public tooling
+     targets, so it has a second vendor service nothing upstream knows about.
 
 Where a constant below is marked TODO(confirm), it is a plausible value from community
 work that has NOT been verified against your ring. Verify before trusting it.
@@ -94,14 +99,32 @@ def parse_battery(packet: bytes) -> tuple[int, bool]:
     return percent, is_charging
 
 
-def parse_heart_rate_log(packet: bytes, day_start_utc: str) -> tuple[Sample, ...]:
-    """Parse a heart-rate log packet into samples.
+def parse_heart_rate_log(
+    packets: tuple[bytes, ...], day_start_utc: str
+) -> tuple[Sample, ...]:
+    """Reassemble a multi-packet heart-rate log into samples.
 
-    The ring reports HR as a series of fixed-interval slots relative to the start of a
-    day, not as absolute timestamps — so `day_start_utc` must be supplied by the
-    caller, already corrected for clock offset. Slots with a zero/sentinel value mean
-    "no measurement taken", NOT "heart rate was zero"; drop them rather than storing
-    zeros, or every rollup you build later will be wrong.
+    Takes the whole burst rather than one frame at a time: reassembly with no hidden
+    state is what keeps this pure and replayable against archived `raw_payloads`.
+    (colmi_r02_client does this with a stateful parser instead; same result, but state
+    is what makes a parser hard to re-run over history.)
+
+    Wire format, from colmi_r02_client `hr.py` (MIT), unverified against this ring:
+
+    - `byte[1]` is the **sub_type** — the frame's index within the burst.
+    - In frame `sub_type == 0`, `byte[2]` is **how many frames follow**. The burst is
+      complete when a frame with `sub_type == count - 1` arrives.
+    - Frame `sub_type == 1` carries **9 HR values plus a 4-byte timestamp**.
+    - Frames `sub_type >= 2` carry **13 HR values** each.
+    - A full day is **288 samples at 5-minute intervals**. Short bursts are padded;
+      slots in the future (when reading today) are zero.
+
+    `day_start_utc` must be supplied by the caller, already corrected for the ring's
+    clock offset — this function cannot know real time from bytes alone.
+
+    The trap: a zero is **"no measurement taken"**, not a heart rate of zero. Drop
+    those slots rather than storing them, or every rollup built on top will be dragged
+    toward zero by gaps that were never real readings.
     """
     raise NotImplementedError
 
@@ -109,10 +132,12 @@ def parse_heart_rate_log(packet: bytes, day_start_utc: str) -> tuple[Sample, ...
 def parse_steps(packet: bytes, day_start_utc: str) -> tuple[Sample, ...]:
     """Parse a step-count packet into per-interval step samples.
 
-    Note: the ring reports steps accumulated per interval, so summing samples over a
-    day gives the daily total. Confirm whether the value is cumulative-since-midnight
-    or per-interval before writing the rollup — the two look identical in one packet
-    and differ completely over a day.
+    Reference: colmi_r02_client `steps.py` (MIT). Expect the same multi-packet
+    sub_type framing as the HR log; widen the signature to a tuple if so.
+
+    Confirm whether the value is cumulative-since-midnight or per-interval before
+    writing any rollup — the two look identical inside a single packet and differ
+    completely over a day.
     """
     raise NotImplementedError
 
@@ -135,8 +160,16 @@ def parse_temperature(packet: bytes, day_start_utc: str) -> tuple[Sample, ...]:
 def parse_sleep(packets: tuple[bytes, ...], day_start_utc: str) -> tuple[SleepSession, ...]:
     """Parse a multi-packet sleep record into sessions with stage sequences.
 
-    Sleep is the one record that spans several packets and must be reassembled before
-    it means anything — hence the tuple input. Two things to get right:
+    **No public Python reference exists for this.** colmi_r02_client has no sleep
+    support at all, so Gadgetbridge's Colmi/Yawell classes are the only prior art —
+    and sleep is this project's highest-priority metric, which makes it the biggest
+    genuinely unsolved piece of the protocol.
+
+    Worth testing before assuming the command channel: sleep may arrive on the second
+    vendor service (`commands.BULK_*`), which nothing upstream knows about. A parser
+    that never sees data may be listening on the wrong characteristic.
+
+    Two things to get right once the bytes are in hand:
       - a session crossing midnight belongs to the night it STARTED
       - stage durations are typically in 5-minute units, not seconds
     """
