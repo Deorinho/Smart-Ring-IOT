@@ -11,10 +11,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 # --- Paths -----------------------------------------------------------------
-# The repo lives at ~/projectring on the hub; data sits outside the tree so a
-# git pull can never touch it.
+# Hub layout (2026-08-08): the repo is cloned at ~/Projects/RavenXSmartRing-IOT.
+# Data deliberately sits OUTSIDE the working tree so a git pull, branch switch, or
+# clean can never touch it — the SQLite file is the one irreplaceable thing here.
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DATA_DIR = Path.home() / "projectring-data"
+DATA_DIR = Path.home() / "Projects" / "RavenXSmartRing-data"
 DB_PATH = DATA_DIR / "ring.db"
 SCHEMA_PATH = REPO_ROOT / "hub" / "schema.sql"
 

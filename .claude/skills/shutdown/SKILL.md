@@ -40,7 +40,7 @@ exact failure the branch workflow exists to prevent.
 
 ### 3. Capture what lives outside the repo
 
-Much of the real work happens in scratch scripts on the hub (`~/ProjectScratchPad`),
+Much of the real work happens in scratch scripts on the hub (`~/Projects/ProjectScratchpad`),
 in terminal output, and in screenshots. None of it is in git. Ask what needs recording
 before it's lost — protocol findings, byte layouts, device strings, measured numbers,
 failures worth remembering.

@@ -5,8 +5,18 @@ to a home hub — a 2014 MacBook Air running Linux Mint — which stores, analyz
 serves a PWA dashboard to an iPhone. No cloud, no accounts, no subscriptions; the data
 never leaves hardware Abhi owns.
 
-**Status (2026-08-02):** both rings in hand. Hub build-out in progress (SSH up, Python
-3.12.3 confirmed). No application code written yet.
+**Status (2026-08-08):** both rings in hand; session 2 merged to `main`.
+
+- **Hub:** reachable over SSH with the lid closed, Bluetooth working, Python 3.12.3.
+  Tailscale and systemd units are **not** set up yet.
+- **Protocol:** confirmed against R06_D29C — both vendor GATT services mapped,
+  `CMD_BATTERY = 0x03`, checksum is `sum(data[:15]) & 0xFF` (validated bidirectionally),
+  and replies echo the command byte in position 0 so they are self-identifying.
+- **Hardware:** chipset is **BlueX**, firmware `R06_1.00.06_240921`, hardware `R06_V1.0`.
+  The ATC_RF03 custom-firmware groundwork applies to this unit. The BLE address is burned
+  into the System ID characteristic and cannot rotate.
+- **Running experiment:** the ring has been worn and unsynced since 2026-08-02 00:30 local.
+  Buffer depth is measured on the first log dump.
 
 ## The fleet (final — do not re-litigate)
 
@@ -143,10 +153,15 @@ hub sync. That number sets sync cadence, the battery ceiling, and how urgent B i
 - **Work happens on a session branch, never on `main`.** Name it after the `PLAN.md` §6
   roadmap row: `session-02-gatt-enumeration`. Branch, roadmap row, and `notebook.md`
   entry then share one number.
-- **`main` is the hub's deployment target.** The hub has `~/projectring` checked out on
+- **`main` is the hub's deployment target.** The hub has `~/Projects/RavenXSmartRing-IOT` checked out on
   `main` and will eventually run `hub/sync.py` from it under a systemd timer. Anything
   merged to `main` is assumed runnable; half-finished work stays on the branch.
 - **Squash-merge the PR at session end**, so `main` carries one commit per session.
+- **End any response that leaves tracked files modified with a paste-ready commit
+  message.** Don't wait to be asked. Cover everything currently uncommitted in one
+  message rather than emitting a fragment per file, and follow the `git-commit` skill:
+  read the real diff, quantify, invent no motivation, no `Co-Authored-By`. Drafting
+  only — never run the commit.
 - Keep the process thin: no PR templates, no required checks, no self-review ceremony.
   The value is the diff as a self-review surface and a clean `main` — nothing more.
 - No `Co-Authored-By` trailer on commits in this repo.

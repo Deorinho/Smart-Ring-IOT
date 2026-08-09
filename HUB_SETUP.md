@@ -9,6 +9,34 @@ Assumes Linux Mint Cinnamon (21.x or 22.x). Commands are copy-paste ready; revie
 
 ---
 
+## 0. Hub facts and layout
+
+The machine as it actually exists, so nothing has to be re-derived each session.
+
+| | |
+| --- | --- |
+| User / address | `warlock@10.0.0.213` — **DHCP, can change.** Never hardcode it; Tailscale's MagicDNS name replaces it once installed. |
+| Python | 3.12.3 |
+| Bluetooth | Broadcom BCM20702B0, BT 4.0. Firmware loads clean. Stack initializes ~43 s into boot — services must wait for it. |
+| WiFi | Must stay on **5 GHz**: one Broadcom radio is shared with Bluetooth, and 2.4 GHz degrades BLE scanning intermittently. |
+| VPN | Mullvad runs here. **Local network sharing must stay enabled** or SSH and the dashboard break. |
+
+Directory layout under `~/Projects`:
+
+```text
+~/Projects/
+├── RavenXSmartRing-IOT/     # the git repo; .venv lives inside it
+├── RavenXSmartRing-data/    # SQLite store + backups — OUTSIDE the repo on purpose
+├── ProjectScratchpad/       # throwaway BLE scripts (enumeration, device info, probes)
+└── Beltest/                 # session 1 Bluetooth scratch venv; historical
+```
+
+The data directory sits outside the working tree deliberately: a `git pull`, a branch
+switch, or a `git clean` must never be able to touch the SQLite file. `hub/config.py`
+encodes these paths — change them there, not in scripts.
+
+---
+
 ## 1. Keep it awake with the lid closed
 
 Two layers control this on Mint and both must agree.
@@ -54,6 +82,13 @@ own keyboard again. Key-based auth recommended:
 ssh-copy-id <user>@<hub-ip>
 ```
 
+**One-click launcher (Windows desktop).** `tools/hub_connect.ps1` opens the session and
+copes with the hub's DHCP address moving: it tries the address remembered under `Host hub`
+in `~/.ssh/config`, then `10.0.0.213`, then sweeps the local /24 for an open port 22 —
+and writes whatever it finds back to `~/.ssh/config`, so plain `ssh hub` stays correct.
+Run `tools/install_hub_shortcut.ps1` once to drop a "RavenX Hub" shortcut on the Desktop.
+Both become obsolete once Tailscale MagicDNS gives the hub a stable name.
+
 ## 3. Verify Bluetooth (the ring's radio path)
 
 The 2014 Air has a Broadcom BT 4.0 chip; Mint usually supports it out of the box.
@@ -70,13 +105,19 @@ this scan is the day-one smoke test when hardware arrives.
 
 ## 4. Python environment
 
+Mint splits `ensurepip` out of the base Python package, so the versioned `-venv`
+package is required or `python3 -m venv` fails with a misleading error:
+
 ```bash
-sudo apt install -y python3-venv python3-pip git
-mkdir -p ~/projectring && cd ~/projectring
-python3 -m venv .venv
-source .venv/bin/activate
-pip install bleak fastapi "uvicorn[standard]" pytest
-python -c "import bleak, fastapi; print('env ok')"
+sudo apt install -y python3.12-venv python3-pip git
+```
+
+```bash
+cd ~/Projects/RavenXSmartRing-IOT && python3 -m venv .venv && .venv/bin/pip install bleak fastapi "uvicorn[standard]"
+```
+
+```bash
+.venv/bin/python -c "import bleak, fastapi; print('env ok')"
 ```
 
 BLE smoke test (no ring needed — scans anything nearby):
@@ -115,8 +156,8 @@ Description=RavenX Smart Ring dashboard (FastAPI)
 After=network.target
 
 [Service]
-WorkingDirectory=%h/projectring
-ExecStart=%h/projectring/.venv/bin/uvicorn hub.api:app --host 0.0.0.0 --port 8000
+WorkingDirectory=%h/Projects/RavenXSmartRing-IOT
+ExecStart=%h/Projects/RavenXSmartRing-IOT/.venv/bin/uvicorn hub.api:app --host 0.0.0.0 --port 8000
 Restart=on-failure
 RestartSec=5
 
@@ -150,7 +191,7 @@ sudo dpkg-reconfigure -plow unattended-upgrades
 
   ```bash
   crontab -e
-  # 0 4 * * * cp ~/projectring/data/ring.db ~/projectring/backups/ring-$(date +\%F).db
+  # 0 4 * * * cp ~/Projects/RavenXSmartRing-data/ring.db ~/Projects/RavenXSmartRing-data/backups/ring-$(date +\%F).db
   ```
 
 ## 8. Verification checklist
