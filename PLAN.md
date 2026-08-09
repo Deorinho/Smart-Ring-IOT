@@ -122,7 +122,7 @@ Calibrated to 2–4 hour sessions, roughly two per weekend plus one midweek.
 | **1** | **Hub foundation + repo reset** ✅ *(2026-08-02)* | Lid closed, SSH reachable, ring visible to bleak |
 | **2** | **GATT enumeration + battery round-trip** ✅ *(2026-08-02)* | Both vendor services mapped, chipset identified, `03 → 03 50 … 53` with checksum verified |
 | **3** | **Raw log dump + why it was empty** ✅ *(2026-08-09)* | Three virgin captures banked; `0xFF` no-data sentinel identified; **HR logging found disabled from the factory** and enabled; RTC set in UTC |
-| 4 | First real data | A night of heart rate returns from a UTC-midnight probe and parses into typed `Sample`s |
+| **4** | **First real data** ✅ *(2026-08-09)* | 24-frame burst parsed into 28 samples over 13.5 h; resting HR 51 bpm; burst layout confirmed and frame-1 offsets corrected |
 | 5 | SQLite store wired up | First real rows land; re-running the sync changes nothing |
 | 6 | Sleep parsing + events | One real night renders as a stage sequence |
 | 7 | Analytics rollups | Daily/weekly summaries from real data |
