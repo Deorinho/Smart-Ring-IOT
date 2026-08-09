@@ -98,9 +98,9 @@ def is_valid(packet: bytes) -> bool:
 
 
 def parse_battery(packet: bytes) -> tuple[int, bool]:
+    # CONFIRMED 2026-08-08 against R06_D29C: byte[2] reads 0 on the finger and 1 in a
+    # powered charging case. byte[1] is the percentage (0x50 = 80 worn, 0x01 = 1 flat).
     percent = packet[1]
-    # UNVERIFIED: byte[2] was 0 while worn. Charging test blocked by the ring being
-    # unreachable in the case — don't depend on this until it's confirmed.
     is_charging = packet[2] != 0
     return percent, is_charging
 

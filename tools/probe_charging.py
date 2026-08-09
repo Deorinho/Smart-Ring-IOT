@@ -28,12 +28,11 @@ import asyncio
 from bleak import BleakClient, BleakScanner
 
 from hub.config import R06
-from protocol.commands import UART_RX_CHAR_UUID, UART_TX_CHAR_UUID, request_battery
 from protocol.packets import is_valid, parse_battery
+from tools.battery import read_battery
 
 SCAN_TIMEOUT_S = 15.0
 CONNECT_TIMEOUT_S = 20.0
-REPLY_TIMEOUT_S = 10.0
 
 
 async def scan_for_ring() -> tuple[bool, int | None]:
@@ -43,29 +42,6 @@ async def scan_for_ring() -> tuple[bool, int | None]:
         if address.upper() == R06.address.upper():
             return True, adv.rssi
     return False, None
-
-
-async def battery_round_trip(client: BleakClient) -> bytes | None:
-    """Send a battery request, return the first reply frame or None on timeout."""
-    reply: list[bytes] = []
-    got = asyncio.Event()
-
-    def on_notify(_sender, data: bytearray) -> None:
-        reply.append(bytes(data))
-        got.set()
-
-    await client.start_notify(UART_TX_CHAR_UUID, on_notify)
-    await client.write_gatt_char(UART_RX_CHAR_UUID, request_battery(), response=False)
-    try:
-        await asyncio.wait_for(got.wait(), REPLY_TIMEOUT_S)
-    except TimeoutError:
-        return None
-    finally:
-        try:
-            await client.stop_notify(UART_TX_CHAR_UUID)
-        except Exception:  # noqa: BLE001 - best effort on teardown
-            pass
-    return reply[0] if reply else None
 
 
 async def main() -> int:
@@ -90,7 +66,7 @@ async def main() -> int:
         async with BleakClient(R06.address, timeout=CONNECT_TIMEOUT_S) as client:
             connected = client.is_connected
             print(f"[connect] OK, connected={connected}")
-            frame = await battery_round_trip(client)
+            frame = await read_battery(client)
     except Exception as exc:  # noqa: BLE001 - the failure mode IS the result here
         print(f"[connect] FAILED: {type(exc).__name__}: {exc}")
 
