@@ -11,6 +11,7 @@
 param(
     [string]$HubUser = 'warlock',
     [string]$HubHost,
+    [string]$RemoteDir = '~/Projects/RavenXSmartRing-IOT',
     [switch]$NoSweep
 )
 
@@ -171,7 +172,21 @@ $Host.UI.RawUI.WindowTitle = "RavenX hub - $dest"
 Write-Host "Connecting to $dest ..." -ForegroundColor Cyan
 Write-Host ''
 
-ssh $dest
+# Land in the repo instead of the home directory. -t forces a PTY (ssh won't
+# allocate one when given a remote command), and `exec $SHELL -l` replaces the
+# cd with a normal login shell that inherits the new working directory. If the
+# directory is missing we still want a usable session, so the cd is not fatal.
+#
+# Quoting: a leading ~ becomes $HOME because bash does not expand a tilde inside
+# quotes, and the path must stay quoted to survive spaces. Both $HOME and $SHELL
+# are escaped so PowerShell leaves them for the remote shell to expand.
+if ($RemoteDir -like '~/*') {
+    $dirExpr = '"$HOME/' + $RemoteDir.Substring(2) + '"'
+} else {
+    $dirExpr = "'" + $RemoteDir + "'"
+}
+$remote = "cd $dirExpr 2>/dev/null || echo 'hub_connect: $RemoteDir not found, staying in home'; exec `$SHELL -l"
+ssh -t $dest $remote
 $code = $LASTEXITCODE
 
 if ($code -ne 0) {
