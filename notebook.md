@@ -318,3 +318,91 @@ roughly daily. `sync_runs.status` already has `no_device` for exactly this.
   pull the onboard log, so the clock from 00:30 is intact.
 - `set_time` deliberately untouched. The raw log dump must come first, and it's a
   one-shot observation on a never-paired ring.
+
+## 2026-08-09 — Session 3: the log was empty because the ring was never recording
+
+Goal was "capture the onboard log and find out how many days back it goes." **Met — but
+the answer was zero, and the reason took most of the session to find.**
+
+### The finding
+
+Thirty-plus log requests across nine local midnights and both candidate factory epochs
+(1970, 2000), on the finger and on the charger, all returned the same sixteen bytes:
+
+```text
+15 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 14
+```
+
+`sub_type = 0xFF` is the ring's **"no data for this day" sentinel** — undocumented
+upstream, now confirmed. Every reply was truthful. The cause, found by reading
+`CMD_HR_LOG_SETTINGS` (0x16):
+
+```text
+16 01 02 1e 05 00 ... 3c   ->   DISABLED, every 30 min
+```
+
+**Automatic heart-rate logging ships disabled from the factory.** The R06 spent a week
+on a finger recording nothing. The buffer-depth experiment measured an empty buffer,
+correctly. Enabling it (`16 02 01 1e`) returned `16 01 01 1e 05 ... 3b` — logging on,
+and the undocumented `byte[4] = 0x05` survived the write, which closed R-011.
+
+### The clock, finally
+
+With three virgin captures banked, the RTC was written for the first time —
+`01 26 08 09 07 07 01 01 ... 48`, BCD, UTC, 2026-08-09T07:07:01Z. BCD makes the date
+legible straight off the wire. The ring acked with `01 00 01 00 22 ...` and emitted an
+undocumented `2f f1 00 ... 20` immediately beforehand. A replay of every virgin
+timestamp afterwards still returned the sentinel — expected, since nothing had been
+recorded to find.
+
+The virgin-timestamp experiment ended weaker than hoped: logging was only enabled about
+an hour before the clock write, at a 30-minute interval, so at most one or two samples
+could have existed. It answered "did an hour of clockless logging produce anything
+retrievable?" (no) rather than "does a virgin ring log at all?" Three captures preserve
+the state regardless; it cannot be re-observed on this unit.
+
+### Protocol confirmed this session
+
+| Item | Value |
+| --- | --- |
+| No-data sentinel | `sub_type = 0xFF` |
+| HR log settings | `0x16`; byte[1] 0x01 reads / 0x02 writes; byte[2] 1=on **2=off**; byte[3] interval |
+| Settings ack | `16 02 01 ...` — writes are acknowledged, not silent |
+| Set time | `0x01`, 7 BCD bytes + language, **UTC** (not local, as the scaffold assumed) |
+| Battery | byte[1] percent, byte[2] charging — confirmed by controlled test |
+| Unsolicited push | `0x73` (`73 0c 63 01` = 99%, charging) |
+| Unknown | `0x2f` before the clock ack; `byte[4]` of the settings frame |
+
+### What broke — all of it mine
+
+- **`probe_hr_log.py` lost an entire run.** The ring dropped the link mid-probe and the
+  exception escaped before the capture was written — the one failure the tool existed
+  to prevent. Fixed: persistence moved into a `finally`, plus one reconnect attempt per
+  probe.
+- **Then `set_ring_clock.py` did exactly the same thing**, because the fix was applied
+  to one file and not its sibling. The post-clock-write capture was lost. Now refactored
+  to reuse the hardened loop.
+- **Probes used local midnight while the ring keeps UTC** — four hours off the ring's
+  day boundary here. Corrected before it could produce a confusing empty result.
+- The hub cannot push to GitHub (HTTPS password auth is dead). Captures came back over
+  `scp`; logged as R-013 with an SSH key as the real fix.
+
+### Measurements
+
+- **~12%/day drain at factory settings with PPG disabled** (80% → 1% over 6.8 days).
+  Since HR logging was off, the drain was *not* PPG. Advertising and the accelerometer
+  are the suspects → R-012, and it questions whether the battery contract targets the
+  right consumer.
+- **Body-worn costs ~21 dB.** Same desk, same battery level: −60 dBm in the case,
+  −81 dBm on the finger → R-010. Range from another room is now an open question.
+- No low-battery warning exists without the vendor app; the ring silently ran to 1%
+  → R-009.
+
+### State at session end
+
+Clock set (UTC), HR logging enabled at 30 min, ring worn from ~03:10 local on a near-full
+charge. That starts two experiments at once: the real buffer-depth measurement, and the
+drain rate at HR=30min to compare against the 12%/day factory baseline.
+
+**Next session opens by probing UTC midnight for 2026-08-09** — if a night of heart rate
+comes back, the read path is proven end to end and session 4 becomes storage.

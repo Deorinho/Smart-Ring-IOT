@@ -107,19 +107,25 @@ class Collector:
 def build_probes(days_back: int) -> list[dict]:
     """Candidate timestamps to address the log with.
 
-    Local midnight for the recent past is what the vendor app would use. The factory
-    epochs cover the real possibility that an unset RTC never left its default, in
-    which case the ring's data lives near 1970 or 2000 rather than near today.
+    **UTC midnight, not local.** The ring's RTC is written in UTC
+    (`commands.set_time`), so its day boundaries are UTC ones. Probing local midnight
+    asks for a point four hours into the ring's day here, which is the wrong day for
+    anything recorded in that window. Earlier captures in `protocol/fixtures/` used
+    local midnight and are labelled as such.
+
+    The factory epochs remain in the set: they cover the case of an RTC that was never
+    set, and they cost two seconds each.
     """
-    now_local = datetime.now().astimezone()
-    midnight = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+    midnight = datetime.now(timezone.utc).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
 
     probes: list[dict] = []
     for d in range(days_back + 1):
         day = midnight - timedelta(days=d)
         probes.append(
             {
-                "label": f"local midnight -{d}d ({day.date()})",
+                "label": f"UTC midnight -{d}d ({day.date()})",
                 "ts": int(day.timestamp()),
             }
         )

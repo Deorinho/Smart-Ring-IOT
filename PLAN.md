@@ -121,8 +121,8 @@ Calibrated to 2–4 hour sessions, roughly two per weekend plus one midweek.
 | --- | --- | --- |
 | **1** | **Hub foundation + repo reset** ✅ *(2026-08-02)* | Lid closed, SSH reachable, ring visible to bleak |
 | **2** | **GATT enumeration + battery round-trip** ✅ *(2026-08-02)* | Both vendor services mapped, chipset identified, `03 → 03 50 … 53` with checksum verified |
-| 3 | Raw log dump + buffer measurement | Log dumped **before** any clock write; `day_offset` walked back until empty — that number is the buffer depth |
-| 4 | Packet parsers: steps, heart rate | Real bytes from `R06_D29C` parse into typed `Sample`s |
+| **3** | **Raw log dump + why it was empty** ✅ *(2026-08-09)* | Three virgin captures banked; `0xFF` no-data sentinel identified; **HR logging found disabled from the factory** and enabled; RTC set in UTC |
+| 4 | First real data | A night of heart rate returns from a UTC-midnight probe and parses into typed `Sample`s |
 | 5 | SQLite store wired up | First real rows land; re-running the sync changes nothing |
 | 6 | Sleep parsing + events | One real night renders as a stage sequence |
 | 7 | Analytics rollups | Daily/weekly summaries from real data |
@@ -158,7 +158,7 @@ Working code first — tests when they earn their place, not before.
 
 | Item | Status |
 | --- | --- |
-| Ring buffer depth | Measured session 3; gates Architecture B |
+| Ring buffer depth | **Not yet measurable** — logging was disabled from the factory, so the first six days recorded nothing. The clock restarted 2026-08-09; measure once real data has accumulated. Still gates Architecture B. |
 | Command opcodes beyond `CMD_BATTERY` | GATT UUIDs and `CMD_BATTERY = 0x03` confirmed 2026-08-02. Log, sleep, and time opcodes still `TODO(confirm)` |
 | Purpose of the second vendor service (`de5bf728…`) | Found during enumeration; likely bulk transfer. Confirm before assuming sleep data arrives on the command channel |
 | Ring reachability while charging | Bug_Backlog R-007; blocks `parse_battery`'s charging flag |

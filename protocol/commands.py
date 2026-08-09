@@ -58,6 +58,12 @@ HR_LOGGING_DISABLED = 0x02   # note: disabled is 2, not 0
 # Payload beyond battery and charging is unconfirmed.
 CMD_STATUS_PUSH = 0x73
 
+# OBSERVED 2026-08-09, undocumented: `2f f1 00 ... 20` arrived unprompted immediately
+# before the ring acknowledged its first-ever clock write. Meaning unknown — possibly a
+# "configuration changed" or state-transition notice. Recorded so a future handler
+# recognises it rather than treating it as a corrupt frame.
+CMD_UNKNOWN_2F = 0x2F
+
 # From colmi_r02_client (MIT) `set_time.py`, 2026-08-08. See the DANGER note on
 # set_time() before sending this one to R06_D29C.
 CMD_SET_TIME = 0x01

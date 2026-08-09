@@ -37,8 +37,7 @@ from tools.probe_hr_log import (
     CHANNELS,
     CONNECT_TIMEOUT_S,
     Collector,
-    run_probe,
-    summarize,
+    run_all,
 )
 
 FIXTURES = Path("protocol/fixtures")
@@ -123,62 +122,62 @@ async def main() -> int:
 
     collector = Collector()
     results: list[dict] = []
-
-    print(f"connecting to {R06.name} @ {R06.address}")
-    async with BleakClient(R06.address, timeout=CONNECT_TIMEOUT_S) as client:
-        print(f"connected: {client.is_connected}")
-
-        for uuid, name in CHANNELS.items():
-            try:
-                await client.start_notify(uuid, collector.handler(name))
-            except Exception as exc:  # noqa: BLE001 - channel may not be notifiable
-                print(f"subscribe FAILED on {name}: {exc!r}")
-
-        collector.reset()
-        await client.write_gatt_char(UART_RX_CHAR_UUID, packet, response=False)
-        await asyncio.sleep(SETTLE_S)
-
-        print(f"clock written. {len(collector.frames)} frame(s) in reply:")
-        for frame in collector.frames:
-            print(f"  {frame['channel']:<8} {frame['hex']}")
-        print()
-
-        for probe in build_reprobes(virgin):
-            result = await run_probe(client, probe, collector)
-            results.append(result)
-            print(summarize(result))
-
-        for uuid in CHANNELS:
-            try:
-                await client.stop_notify(uuid)
-            except Exception:  # noqa: BLE001 - best effort on teardown
-                pass
+    clock_reply: list[dict] = []
 
     out_path = args.out or FIXTURES / (
         f"post_clockset_hr_probe_{now.strftime('%Y%m%dT%H%M%S')}.json"
     )
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(
-        json.dumps(
-            {
-                "captured_utc": now.isoformat(),
-                "ring": {"name": R06.name, "address": R06.address},
-                "note": "Captured immediately AFTER the first-ever clock write.",
-                "clock_written_utc": now.isoformat(),
-                "clock_packet_hex": packet.hex(" "),
-                "compared_against": str(virgin_path),
-                "probes": results,
-            },
-            indent=2,
-        ),
-        encoding="utf-8",
-    )
+
+    try:
+        # The clock write gets its own short connection so a later probe failure
+        # cannot obscure whether the write itself was acknowledged.
+        print(f"connecting to {R06.name} @ {R06.address}")
+        async with BleakClient(R06.address, timeout=CONNECT_TIMEOUT_S) as client:
+            print(f"connected: {client.is_connected}")
+            for uuid, name in CHANNELS.items():
+                try:
+                    await client.start_notify(uuid, collector.handler(name))
+                except Exception as exc:  # noqa: BLE001 - may not be notifiable
+                    print(f"subscribe FAILED on {name}: {exc!r}")
+
+            collector.reset()
+            await client.write_gatt_char(UART_RX_CHAR_UUID, packet, response=False)
+            await asyncio.sleep(SETTLE_S)
+
+            clock_reply = list(collector.frames)
+            print(f"clock written. {len(clock_reply)} frame(s) in reply:")
+            for frame in clock_reply:
+                print(f"  {frame['channel']:<8} {frame['hex']}")
+            print()
+
+        # Reuse the hardened probe loop: it reconnects on link loss and keeps going.
+        await run_all(build_reprobes(virgin), collector, results)
+    finally:
+        # Unconditional. The first version wrote the capture after the probe loop and
+        # lost the entire post-clock-write record when the ring dropped the link.
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(
+            json.dumps(
+                {
+                    "captured_utc": now.isoformat(),
+                    "ring": {"name": R06.name, "address": R06.address},
+                    "note": "Captured immediately AFTER the first-ever clock write.",
+                    "clock_written_utc": now.isoformat(),
+                    "clock_packet_hex": packet.hex(" "),
+                    "clock_reply_frames": clock_reply,
+                    "compared_against": str(virgin_path),
+                    "probes": results,
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        print(f"\ncapture written: {out_path}  ({len(results)} probes recorded)")
 
     after = answered_map({"probes": results})
     appeared = [ts for ts, n in after.items() if n > 0 and before.get(ts, 0) == 0]
     vanished = [ts for ts, n in before.items() if n > 0 and after.get(ts, 1) == 0]
 
-    print(f"\ncapture written: {out_path}")
     print(f"answered before: {answered_before} / {len(before)}")
     print(f"answered after : {sum(1 for n in after.values() if n > 0)} / {len(after)}")
 
