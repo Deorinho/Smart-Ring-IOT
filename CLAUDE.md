@@ -5,24 +5,31 @@ to a home hub — a 2014 MacBook Air running Linux Mint — which stores, analyz
 serves a PWA dashboard to an iPhone. No cloud, no accounts, no subscriptions; the data
 never leaves hardware Abhi owns.
 
-**Status (2026-08-08):** both rings in hand; session 2 merged to `main`.
+**Status (2026-08-13):** both rings in hand; sessions 1–4 merged to `main`. Real heart-rate
+data is flowing from ring to parser. Storage is the current frontier.
 
 - **Hub:** reachable over SSH with the lid closed, Bluetooth working, Python 3.12.3.
-  Tailscale and systemd units are **not** set up yet.
-- **Protocol:** confirmed against R06_D29C — both vendor GATT services mapped,
-  `CMD_BATTERY = 0x03`, checksum is `sum(data[:15]) & 0xFF` (validated bidirectionally),
-  and replies echo the command byte in position 0 so they are self-identifying.
+  Tailscale and systemd units are **not** set up yet, and the hub cannot push to GitHub
+  (Bug_Backlog R-013) — captures come back over `scp`.
+- **Ring state:** RTC **set** to UTC on 2026-08-09T07:07:01Z. Automatic HR logging
+  **enabled at 30-minute intervals** — it ships disabled from the factory, which is why
+  the first week recorded nothing.
+- **Protocol confirmed against R06_D29C:** both vendor GATT services mapped; checksum is
+  `sum(data[:15]) & 0xFF`; replies echo the command byte in position 0, so they are
+  self-identifying and one handler can dispatch on `byte[0]`. Commands known:
+  `0x03` battery, `0x15` HR log, `0x16` HR settings, `0x01` set time. Unsolicited pushes
+  exist (`0x73` status, `0x2f`), so handlers must tolerate frames nobody requested.
 - **Hardware:** chipset is **BlueX**, firmware `R06_1.00.06_240921`, hardware `R06_V1.0`.
-  The ATC_RF03 custom-firmware groundwork applies to this unit. The BLE address is burned
-  into the System ID characteristic and cannot rotate.
-- **Running experiment:** the ring has been worn and unsynced since 2026-08-02 00:30 local.
-  Buffer depth is measured on the first log dump.
+  The ATC_RF03 custom-firmware groundwork applies. The BLE address is burned into the
+  System ID characteristic and cannot rotate — safe as a permanent database key.
+- **Battery reality:** ~17–18%/day at HR=30min, so **~5.5 days per charge**. See the
+  battery contract below; the earlier "PPG dominates" assumption was measured and is wrong.
 
 ## The fleet (final — do not re-litigate)
 
 | Unit | Role | State |
 | --- | --- | --- |
-| Colmi R06, size 10 | **DAILY + DEV** | Worn every day; the ring the hub is built against. **Factory-virgin — never paired, RTC never set.** |
+| Colmi R06, size 10 | **DAILY + DEV** | Worn every day; the ring the hub is built against. `R06_D29C` @ `81:5F:4A:87:D2:9C`. Never connected to the QRing app. RTC set 2026-08-09; HR logging enabled at 30 min. |
 | Colmi R09, size 12 | **SHOWCASE + ORACLE** | For the YouTube video. Currently on the stock QRing app as a validation oracle; migrates to the hub at the end. |
 
 No further ring purchases. End state is both rings running the same software, after
@@ -87,17 +94,27 @@ hub sync. That number sets sync cadence, the battery ceiling, and how urgent B i
 
 ## Non-negotiable engineering rules
 
-- **Battery is the top constraint.** The ring's sensing schedule is owned by the hub and
-  written on every connect — never inherited from whatever the QRing app last set. PPG
-  optical duty cycle is the dominant drain; MCU compute is a rounding error, so
-  "offload computation to the hub" is not a battery strategy. Default contract: auto-HR
-  30 min, SpO2 off, stress/HRV off, accelerometer on, temperature on, **hub syncs 3×/day**.
+- **Battery is the top constraint, and the drain is mostly NOT sensing.** Measured
+  2026-08-13: ~17–18%/day at HR=30min, i.e. **~5.5 days per charge**. The factory
+  configuration with HR logging *disabled* ran ~13%/day, so PPG at 30-minute intervals
+  costs only ~5%/day and the remaining ~13%/day is an idle floor that sensing schedules
+  cannot touch. **Tuning the HR interval is therefore near-worthless**; finding what
+  burns the floor (Bug_Backlog R-014) is the real work. MCU compute remains a rounding
+  error, so "offload computation to the hub" was never a battery strategy either.
+  Default contract: auto-HR 30 min, SpO2 off, stress/HRV off, accelerometer on,
+  temperature on, **hub syncs 3×/day**.
+- **Never estimate battery drain from the first day of a charge.** This gauge is
+  voltage-derived and badly non-linear: 0.28%/h over the first 14 hours, 0.78%/h after.
+  An early reading produced a 6.7%/day estimate that was wrong by roughly 3×.
 - **Never connect the R06 to the stock QRing app.** It feeds the vendor cloud and may mark
   the ring's buffered log as delivered, starving the hub. The R09 stays on QRing until its
   oracle role ends.
-- **First R06 connect: dump the raw log BEFORE setting the clock.** The ring is
-  factory-virgin and its RTC has never been set — a one-shot observation of virgin
-  timestamp behavior. The R09 cannot substitute; QRing already time-set it.
+- **The virgin-ring observation is complete — do not re-litigate it.** Three captures in
+  `protocol/fixtures/virgin_hr_probe_*.json` record the R06 before its clock was ever
+  set; every probe returned the `0xFF` no-data sentinel because HR logging ships
+  disabled. The clock was written 2026-08-09 and that state cannot recur on this unit.
+- **The ring keeps UTC.** `set_time` writes UTC (BCD-encoded), so the log's day
+  boundaries are UTC ones. Address the log at UTC midnight, never local midnight.
 - Parsers are pure functions: bytes in, values out. No I/O, no globals, no hidden state.
 - All ingest paths are idempotent: dedupe by natural key before insert. Re-syncing stored
   data is harmless. This holds for local syncs and the satellite's `/ingest` equally.

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d1117">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="RavenX">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon.svg">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+<title>RavenX</title>
+</head>
+<body>
+
+<header>
+  <h1>RavenX</h1>
+  <span id="freshness" class="freshness">loading…</span>
+</header>
+
+<main>
+  <section class="tiles" id="tiles"></section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Heart rate</h2>
+      <div class="range" id="range">
+        <button data-days="1" class="on">24 h</button>
+        <button data-days="7">7 d</button>
+        <button data-days="30">30 d</button>
+      </div>
+    </div>
+    <div id="hr-chart" class="chart"></div>
+  </section>
+
+  <section class="card">
+    <h2>By day</h2>
+    <div id="day-chart" class="chart"></div>
+  </section>
+
+  <section class="card">
+    <h2>Sync</h2>
+    <div id="syncs" class="syncs"></div>
+  </section>
+</main>
+
+<footer>
+  <span id="footnote"></span>
+</footer>
+
+<script src="/app.js"></script>
+</body>
+</html>

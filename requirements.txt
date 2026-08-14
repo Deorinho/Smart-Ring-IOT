@@ -1,0 +1,13 @@
+# RavenX hub dependencies. Install into the repo's .venv on the hub:
+#     python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+#
+# Four packages, each earning its place. Everything else is stdlib: sqlite3 for
+# storage, argparse for tools, json for captures, no ORM and no test framework.
+#
+# Deliberately absent: colmi_r02_client. It is the protocol reference and is MIT, so
+# code is lifted from it with attribution — but it pins bleak 0.2x and would fight
+# bleak 3.x here (Bug_Backlog R-006).
+
+bleak==3.0.2              # BLE client; hub-only, BlueZ backend
+fastapi==0.115.6          # read-only JSON API
+uvicorn[standard]==0.34.0 # ASGI server for the API

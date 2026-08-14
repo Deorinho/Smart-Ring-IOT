@@ -1,0 +1,135 @@
+/* RavenX dashboard — dark, glanceable, phone-first.
+   No framework and no build step: this is the entire stylesheet. */
+
+:root {
+  --bg: #0d1117;
+  --panel: #161b22;
+  --line: #21262d;
+  --text: #e6edf3;
+  --dim: #8b949e;
+  --hr: #f7776d;
+  --ok: #3fb950;
+  --warn: #d29922;
+  --bad: #f85149;
+  --radius: 14px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: max(18px, env(safe-area-inset-top)) 18px 10px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: 0.04em;
+  font-weight: 650;
+}
+
+h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.freshness { font-size: 12px; color: var(--dim); }
+.freshness.stale { color: var(--warn); }
+.freshness.dead { color: var(--bad); }
+
+main { padding: 0 18px 24px; display: grid; gap: 14px; }
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.tile {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+
+.tile .label {
+  font-size: 11px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.tile .value {
+  font-size: 27px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  margin-top: 3px;
+}
+
+.tile .unit { font-size: 13px; color: var(--dim); margin-left: 3px; font-weight: 400; }
+.tile .sub { font-size: 11px; color: var(--dim); margin-top: 2px; }
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+
+.range { display: flex; gap: 4px; }
+
+.range button {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--dim);
+  font: inherit;
+  font-size: 12px;
+  padding: 3px 9px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.range button.on { background: var(--line); color: var(--text); }
+
+.chart { width: 100%; overflow-x: auto; }
+.chart svg { display: block; width: 100%; height: auto; }
+
+.empty { color: var(--dim); font-size: 13px; padding: 18px 0; text-align: center; }
+
+.syncs { display: grid; gap: 6px; font-size: 12px; }
+
+.sync-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.sync-row .dot { color: var(--ok); }
+.sync-row.fail .dot { color: var(--bad); }
+
+footer {
+  padding: 0 18px max(18px, env(safe-area-inset-bottom));
+  font-size: 11px;
+  color: var(--dim);
+}

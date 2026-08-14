@@ -1,0 +1,16 @@
+# 04:00 daily — after the 22:00 sync has landed and long before the 08:00 one.
+#
+# Persistent=true so a hub that was off at 04:00 backs up shortly after it returns,
+# rather than skipping a day silently.
+
+[Unit]
+Description=RavenX nightly backup schedule
+
+[Timer]
+OnCalendar=*-*-* 04:00:00
+Persistent=true
+RandomizedDelaySec=300
+Unit=ring-backup.service
+
+[Install]
+WantedBy=timers.target

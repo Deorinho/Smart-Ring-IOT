@@ -1,0 +1,35 @@
+# RavenX dashboard — read-only API + PWA.
+#
+# Install as a systemd USER unit so it needs no root:
+#     mkdir -p ~/.config/systemd/user
+#     cp hub/systemd/ring-dashboard.service ~/.config/systemd/user/
+#     systemctl --user daemon-reload
+#     systemctl --user enable --now ring-dashboard
+#     loginctl enable-linger $USER      # required, or it stops when you log out
+#     journalctl --user -u ring-dashboard -f
+#
+# `enable-linger` is the step people miss. Without it the unit only runs while a login
+# session exists, which on a headless lid-closed hub means it dies when you close SSH.
+#
+# No Bluetooth dependency here on purpose: this process only reads SQLite. The BLE sync
+# service is separate and will need `After=bluetooth.target` plus tolerance for an
+# adapter that is not ready yet (Bug_Backlog R-005) — the stack initialises ~43 s into
+# boot on this machine.
+
+[Unit]
+Description=RavenX Smart Ring dashboard (FastAPI)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/Projects/RavenXSmartRing-IOT
+ExecStart=%h/Projects/RavenXSmartRing-IOT/.venv/bin/uvicorn hub.api:app --host 0.0.0.0 --port 8000
+Restart=on-failure
+RestartSec=5
+
+# The store lives outside the repo, so a git pull or clean can never touch it.
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

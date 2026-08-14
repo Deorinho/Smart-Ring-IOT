@@ -7,17 +7,44 @@ owner controls.
 
 ```text
 [Colmi R06] --BLE--> [MacBook Air hub] --Tailscale--> [iPhone PWA]
-             ring        sync service                    dark-theme
-             buffers     SQLite store                    charts
-             onboard     analytics + FastAPI
+   PPG + accel          protocol parsers               dark-theme
+   logs to a            SQLite telemetry store         charts,
+   288-slot day         FastAPI read-only API          glanceable
 ```
 
-**Status (2026-08-02):** both rings in hand, hub build-out in progress. No application
-code yet.
+**Status (2026-08-13):** real heart-rate data flows from ring to parser to SQLite to a
+dashboard. Resting HR measured at 51 bpm. Still manual — the BLE sync service and
+remote access are next.
 
-- `PLAN.md` — mission, architecture, metrics, phase plan
+## What works
+
+- **Protocol** — the QRing dialect is mapped far enough to be useful: battery, heart-rate
+  log, log settings, and clock, with the checksum and framing verified bidirectionally
+  against the ring itself.
+- **Storage** — a generic telemetry schema keyed by `(source, metric, ts_utc)`. Ingest is
+  idempotent by construction, so re-syncing is free.
+- **Dashboard** — dark, phone-first, zero dependencies. Charts are hand-rolled SVG.
+
+## What doesn't yet
+
+- Nothing syncs on its own; captures are pulled by hand with `tools/`.
+- The dashboard is LAN-only until Tailscale goes in.
+- Sleep — the top-priority metric — is still unmapped.
+- `ring.db` has no backup. See `Bug_Backlog.md` R-004.
+
+## Layout
+
+- `protocol/` — packet parsers and command builders (pure functions) + captured fixtures
+- `hub/` — SQLite store, read-only API, config, systemd units
+- `dashboard/` — the PWA
+- `tools/` — probes, capture inspection, offline ingest
+- `firmware/` — ESP32-C3 satellite, Architecture B, not started
+
+## Docs
+
+- `PLAN.md` — mission, architecture, metrics, session roadmap
 - `HUB_SETUP.md` — building the MacBook Air into an always-on hub
 - `RESOURCES.md` — external protocol references
-- `notebook.md` — session log
+- `notebook.md` — session log, and the script skeleton for the video
 - `Bug_Backlog.md` — open defects and known risks
-- `CLAUDE.md` — engineering rules and repo conventions for AI-assisted work
+- `CLAUDE.md` — engineering rules and conventions for AI-assisted work

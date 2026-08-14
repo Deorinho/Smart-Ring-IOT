@@ -76,7 +76,10 @@ is the first move.
   disagree, trust the tree and flag the discrepancy.
 - Scope honestly to the hours available. A briefing that overpromises makes every
   session feel like a failure.
-- Hardware reality first: the R06 is the daily driver, it is factory-virgin, its RTC has
-  never been set, and its raw log must be dumped before the clock is ever written.
+- Hardware reality first. As of 2026-08-09 the R06's RTC is **set to UTC** and automatic
+  HR logging is **enabled at 30-minute intervals** (it ships disabled). The ring keeps
+  UTC, so address its log at UTC midnight. It lasts ~5.5 days per charge, and its drain
+  is dominated by an idle floor rather than by PPG — see `CLAUDE.md`'s battery contract
+  before proposing any sensing-schedule change as a power saving.
 - If something in `PLAN.md` or `CLAUDE.md` has gone stale, say so — doc drift is what
   broke the last version of this project.
