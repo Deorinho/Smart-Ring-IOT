@@ -73,10 +73,18 @@ Its caching policy is asymmetric on purpose:
 | shell (html/css/js/icons) | stale-while-revalidate | Static, no build step. Cache-first without revalidation would mean bumping a version string by hand after every edit — a chore that gets skipped and then debugged for an hour. |
 | `/api/*` | **network only, never cached** | A cached reading replayed as current would break the one promise this design makes. Offline, the fetch fails and the status line says "Hub unreachable", which is an honest thing for a screen to say. |
 
-**It requires a secure context and has never been observed registering.** Over plain
-http on the LAN, registration rejects and the dashboard carries on working exactly as
-before — the failure is logged via `console.info` rather than swallowed, so "is it
-actually installed?" stays answerable from the phone. Verify on iOS once Tailscale
-Serve is up; that is the only environment where the answer counts.
+**It requires a secure context.** Over plain http on the LAN, registration rejects and
+the dashboard carries on working exactly as before — the failure is logged via
+`console.info` rather than swallowed, so "is it actually installed?" stays answerable
+from the phone.
+
+**Verified on iOS 2026-08-17** over Tailscale Serve: added to the home screen, launched
+in airplane mode, shell painted from cache with the status line reading
+`Hub unreachable · Load failed`. That string is the proof rather than a fault — it is
+Safari's fetch error arriving through `app.js`'s catch, which only runs if the document
+itself was served without a network.
+
+The offline test is the cheapest way to re-confirm the worker after any change to `sw.js`
+or the shell file list: airplane mode, relaunch, see whether it paints.
 
 Bump `CACHE` in `sw.js` if a shell file ever needs to be force-evicted.

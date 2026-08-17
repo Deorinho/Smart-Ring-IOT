@@ -25,10 +25,13 @@ the schema to a database that lacks it, so pointing it at an empty or truncated 
 would silently produce a valid, empty store reporting "0 samples" instead of an error.
 Verification runs first so that cannot happen.
 
-    python -m tools.restore --list
-    python -m tools.restore --latest
-    python -m tools.restore --from ~/.../backups/ring-2026-08-16T040000Z.db
-    python -m tools.restore --latest --into ~/restore-check
+    .venv/bin/python -m tools.restore --list
+    .venv/bin/python -m tools.restore --latest
+    .venv/bin/python -m tools.restore --from ~/.../backups/ring-2026-08-16T040000Z.db
+    .venv/bin/python -m tools.restore --latest --into ~/restore-check
+
+The hub has no bare `python`; Mint ships `python3`, and the venv is what the systemd
+units call. On the Windows desktop plain `python` is correct.
 
 Exit status is 0 only if the restored copy verified *and* served the read path. That
 makes it safe to run from a timer later — a backup regime nobody checks decays into a
@@ -267,7 +270,7 @@ def _compare_with_live(restored: StoreSummary) -> None:
     delta = live.samples - restored.samples
     print(f"\nlive store  {live.headline()}")
     if delta > 0:
-        print(f"backup is behind live by {delta} samples — expected for an older backup")
+        print(f"backup is behind live by {delta} samples - expected for an older backup")
     elif delta == 0:
         print("backup and live hold the same number of samples")
     else:
@@ -319,7 +322,9 @@ def main() -> int:
     if chosen is None:
         chosen = latest_backup()
         if chosen is None:
-            print(f"no backups in {BACKUP_DIR} — run `python -m tools.backup` first")
+            print(f"no backups in {BACKUP_DIR}")
+            print("write one first:  .venv/bin/python -m tools.backup")
+            print("then check the timer:  systemctl --user list-timers --all | grep ring")
             return 1
         if not args.latest:
             print(f"(no --from given; using the newest backup: {chosen.name})")
@@ -329,11 +334,15 @@ def main() -> int:
 
     print()
     if ok:
-        print("RESTORE PROVEN — this backup contains a working store.")
+        print("RESTORE PROVEN - this backup contains a working store.")
         print("Point the dashboard at it to see it with your own eyes:")
         print(f"  RAVENX_DATA_DIR={target.parent} .venv/bin/uvicorn hub.api:app --port 8001")
+        # No --host above, so this binds 127.0.0.1 and cannot be exposed by accident.
+        # An SSH tunnel is how you look at it from another machine -- see HUB_SETUP 2a.
+        print("then, from the desktop:")
+        print("  ssh -L 8001:localhost:8001 hub   # open http://localhost:8001")
     else:
-        print("RESTORE FAILED — this backup is not a backup. Investigate before trusting")
+        print("RESTORE FAILED - this backup is not a backup. Investigate before trusting")
         print("the rest of the rotation; whatever produced it may have produced them all.")
     return 0 if ok else 1
 
