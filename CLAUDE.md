@@ -5,12 +5,15 @@ to a home hub — a 2014 MacBook Air running Linux Mint — which stores, analyz
 serves a PWA dashboard to an iPhone. No cloud, no accounts, no subscriptions; the data
 never leaves hardware Abhi owns.
 
-**Status (2026-08-13):** both rings in hand; sessions 1–4 merged to `main`. Real heart-rate
-data is flowing from ring to parser. Storage is the current frontier.
+**Status (2026-08-16):** both rings in hand; sessions 1–6 merged to `main`. The pipeline
+runs itself — BLE → parser → SQLite → JSON API → dashboard, on a timer, unattended.
+Remote access is the current frontier.
 
 - **Hub:** reachable over SSH with the lid closed, Bluetooth working, Python 3.12.3.
-  Tailscale and systemd units are **not** set up yet, and the hub cannot push to GitHub
-  (Bug_Backlog R-013) — captures come back over `scp`.
+  Four systemd **user** units are installed and running with linger enabled
+  (`ring-sync` + timer, `ring-backup` + timer, `ring-dashboard`). **Tailscale is still
+  not installed**, so the dashboard is LAN-only behind a `ufw` allow rule, and the hub
+  cannot push to GitHub (Bug_Backlog R-013) — captures come back over `scp`.
 - **Ring state:** RTC **set** to UTC on 2026-08-09T07:07:01Z. Automatic HR logging
   **enabled at 30-minute intervals** — it ships disabled from the factory, which is why
   the first week recorded nothing.

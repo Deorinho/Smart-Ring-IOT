@@ -728,3 +728,206 @@ will recur on the next machine.
   R-002 and the sync leaves them null, so clock drift remains unmeasured on real runs.
 - Sleep (R-008) and the idle-drain sensing flags (R-014) are still the two big unknowns.
 - Buffer depth needs re-measuring at ~20 days to find its real limit.
+
+## 2026-08-17 — Session 7: the phone finally sees it, and a backup proves itself
+
+**The original brief is complete.** Ring → hub → SQLite → API → dashboard → *phone*, over
+a network I don't control, with no company anywhere in the path. And R-004 — open since
+day one, the oldest P1 in the backlog — is closed.
+
+### The distinction the whole session turned on
+
+`tools/backup.py` has verified every backup it wrote since session 6. That sounds like
+enough and isn't. It runs `PRAGMA integrity_check` against the file it just created, in
+the process that created it. That answers *"did the write succeed?"* It never answers
+*"could I get my data back?"*
+
+`tools/restore.py` answers the second one, and the design follows from taking it
+seriously: copy the backup to a scratch directory, verify it, then **read it back
+through `hub/db.py`'s own query functions** — the same ones `hub/api.py` calls. Raw SQL
+would have tested SQLite. Going through the application layer tests the thing you
+actually need on the day the disk dies.
+
+The ordering inside that matters too. `hub.db.connect` applies the schema to a database
+that lacks one, so pointing it at a truncated file would have silently produced a valid,
+empty store reporting "0 samples" instead of an error. Verification runs first
+specifically so that cannot happen.
+
+### Seven ways to break a backup
+
+Reading the code was not going to find anything — that lesson is three sessions old now.
+So the tool got attacked instead:
+
+```text
+intact             0   RESTORE PROVEN
+truncated          1   unreadable: database disk image is malformed
+zeroed pages       1   integrity_check: *** in database main ***
+empty file         1   missing or empty
+random bytes       1   unreadable: file is not a database
+valid but empty    1   restored store contains no samples
+missing file       1   no such backup
+live-store guard   1   refusing to restore over the live store
+```
+
+**"Valid but empty" is the case worth having built this for.** A database with the
+correct schema and zero rows passes `integrity_check` cleanly. No checksum can catch it.
+Restoring one would recover nothing while reporting success, and you would find out
+months later. Only counting the samples sees it.
+
+The guard was tested by pointing the tool at the live store deliberately. It refused, and
+the store still had its rows afterwards — which is the test, because the obvious way to
+try a restore is to put the backup back where the original lives, and that destroys the
+only copy holding anything newer than the backup.
+
+### Then the hub said no
+
+```text
+$ python -m tools.restore --latest
+Command 'python' not found, did you mean: command 'python3' from deb python3
+```
+
+Mint has no bare `python`, and everything here runs from the venv anyway because that is
+what the systemd units call. **My own runbook had it wrong**, in three places, and the
+error message the tool printed told him to run the same wrong command. Fixed in
+`HUB_SETUP.md`, `restore.py`, and `backup.py`.
+
+Then: `no backups in /home/warlock/Projects/RavenXSmartRing-data/backups`. For a moment
+that looked like the timers had never been installed — which would have quietly
+falsified session 6's headline claim. They were fine:
+
+```text
+ring-sync.timer    NEXT Mon 08:01  LAST Sun 22:01:37  7min ago
+ring-backup.timer  NEXT Mon 04:00  LAST -
+```
+
+The backup timer simply had not reached its first 04:00 yet. `Persistent=true` backfills
+runs missed while the machine was *off*, not runs scheduled before the timer existed.
+
+### The restore, on real data
+
+```text
+OK   integrity   integrity ok, 667 rows across 7 tables
+OK   read path   334 samples | 1 sources | 3 sync runs | 322 raw frames
+  heart_rate      332 samples  2026-08-09 .. 2026-08-17   47-120
+  battery           2 samples  2026-08-17 .. 2026-08-17   62-62
+```
+
+**The span still starts 2026-08-09** — the day HR logging was enabled. Nine days in, the
+ring has still not evicted its oldest day, so the buffer floor has not moved and the
+ceiling remains unmeasured. That is the observation that would have told us otherwise.
+
+Resting low is now **47 bpm**, down from the 51 recorded in session 4.
+
+### A sync landed while we were working
+
+```text
+22:01:37 scanning for R06_D29C ... connected
+22:01:48 sensing policy already correct (HR every 30 min)
+22:01:51 battery 61% (on battery)
+         2026-08-15: 24 frames -> 48 samples
+         2026-08-16: 24 frames -> 46 samples
+         2026-08-14: 24 frames -> 39 samples
+22:02:03 stored 4 new of 139 parsed samples
+```
+
+Twenty-six seconds, unattended, nobody typing. It also **answered a question I had raised
+an hour earlier**: total coverage sits near 88% of theoretical, and I had flagged that a
+uniform shortfall would mean something systematic in the slot arithmetic. It isn't
+uniform — 48/48 one day, 39 the next. Per-day variation is the ring being off a finger on
+the charger. Benign, and now recorded in `PLAN.md` §8 so it isn't re-investigated.
+
+### Two failures that were purely about which machine I was on
+
+The hub's hostname is `WARLOCK` and its user is `warlock`. So is the desktop's. The shell
+prompt is therefore no help whatsoever, and it cost two rounds:
+
+- `ssh -L 8001:localhost:8001 hub` run **on the hub** → `Could not resolve hostname hub`.
+  The alias lives in the *desktop's* `~/.ssh/config`. That error is now documented as the
+  tell that you're on the wrong box.
+- Then the same command pasted into PowerShell **with the hub's prompt string still
+  attached**, which PowerShell dutifully tried to execute as a cmdlet.
+
+Out of that came something genuinely useful: `HUB_SETUP.md` §2a now makes the SSH tunnel
+the **standing method** for viewing any hub service. It makes `ufw` irrelevant because
+traffic arrives inside the already-allowed port 22, it exposes nothing new, and — the
+part that mattered an hour later — it keeps working while the network is deliberately in
+pieces, which is how you tell whether a change broke *routing* or broke *the service*.
+
+### Tailscale, and the switch that sits next to the one you want
+
+Install and `tailscale up` were uneventful. Both nodes appeared:
+
+```text
+100.91.108.41    warlock    linux
+100.108.166.121  iphone171  iOS
+```
+
+`tailscale serve --bg 8000` then reported Serve was not enabled for the tailnet and
+printed an admin-console link. **On that page, Funnel sits beside HTTPS certificates**,
+and both got ticked.
+
+HTTPS certificates are required — without a real cert for `warlock.<tailnet>.ts.net`,
+iOS will not register a service worker. **Funnel is the public-internet switch**, the one
+`PLAN.md` and `HUB_SETUP.md` §5 explicitly declined, because serve-not-funnel is what
+keeps the privacy claim honest. Nothing was actually exposed — Funnel only publishes when
+you run `tailscale funnel`, and `serve status` reporting `(tailnet only)` is the proof —
+but the capability was live, one typo from publishing my heart rate to the internet. It
+was turned back off. Worth naming as a trap: the setting you need and the setting that
+undoes the project's premise are one click apart.
+
+`ufw` rule 2 deleted, then verified **both ways** — phone still loads over the tailnet,
+`http://10.0.0.213:8000` now times out. Only the pair proves it became tailnet-only
+rather than merely still-working. And `ufw allow in on tailscale0` was never needed:
+Tailscale's own iptables rules land ahead of ufw's default-deny on this box. Deliberately
+not run pre-emptively, because knowing whether it was required is worth more than saving
+a command.
+
+### The service worker, verified where it counts
+
+`dashboard/sw.js` caches the shell stale-while-revalidate and **never caches `/api/*`**.
+That asymmetry is the design: a cached reading replayed as current would break the one
+promise the status line makes. Offline, the fetch fails and the dashboard says so.
+
+It could not be verified on the desktop — the automation browser returns 200 for
+`fetch('/sw.js')` but fails the service-worker-specific script fetch, so I stopped
+changing code against an environment artefact and shipped it flagged as unproven.
+
+Verified on the phone instead, which is the only place the answer counts. Added to the
+home screen, launched in airplane mode:
+
+```text
+Hub unreachable · Load failed
+```
+
+That string **is** the proof rather than a fault. `Load failed` is Safari's fetch error
+arriving through `app.js`'s catch — a path that can only run if the document itself was
+served with no network. Shell painted, numbers absent, status line honest about which.
+Exactly what "empty is a state, not a gap" was supposed to look like when it finally
+happened for real.
+
+Then the shot the video has been waiting for: **WiFi off, cellular only, dashboard
+loads.**
+
+### Open after session 7
+
+- **Mullvad came back, and nothing broke.** This was the step budgeted as unbounded — two
+  WireGuard clients both asserting control over routing, on a headless machine, with
+  `HUB_SETUP.md` §5 carrying a whole contingency about split-tunnelling `tailscaled` out
+  of Mullvad. None of it was needed. `mullvad connect`, then SSH, `tailscale status` and
+  the phone dashboard in that order, all fine. **R-001 closed** after fifteen days.
+
+  Worth being honest about why that was still the right way to do it. The conflict not
+  materialising doesn't mean the caution was wasted — it means the sequencing worked.
+  Doing it in one step and finding SSH gone would have been indistinguishable from a
+  dozen other causes, and the machine is a lid-closed laptop in another room.
+- **Untested: whether it survives a reboot.** Everything above happened in a specific
+  order — Mullvad already running, Tailscale installed after it, Mullvad reconnected
+  last. On boot both start at once and that ordering never recurs. This repo already has
+  a scar from that exact shape in R-005, where Bluetooth initialising 43 s into boot
+  makes a service work by hand and never after a restart. Logged as R-017.
+- The off-hub backup copy is a hand-run `scp` → R-016.
+- `sync.py` still leaves `ring_clock_utc` and `clock_offset_s` null → R-015, and the
+  dashboard says "clock offset unmeasured" on every load because of it.
+- Sleep (R-008) and the idle-drain sensing flags (R-014) remain the two big unknowns.
+  Sleep is next.
+- Buffer ceiling still unmeasured; re-check around 2026-08-29.

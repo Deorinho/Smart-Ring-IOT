@@ -69,14 +69,26 @@ what the listing claimed — the listing can be wrong even in good faith.
 - **SQLite** — <https://sqlite.org/docs.html> — stdlib `sqlite3` is enough; read
   the datatype notes (store timestamps as ISO-8601 TEXT or unix INTEGER, pick one).
 
-## Dashboard (zero-hardware phase, with synthetic data)
+## Dashboard
 
-- **Chart.js** — <https://www.chartjs.org/docs/latest/> — read: line + bar charts,
-  time axis (needs a date adapter), responsive options. Dark theme via CSS variables.
+- **Chart.js** — <https://www.chartjs.org/docs/latest/> — **named in PLAN.md, then
+  deliberately not used** (session 5, 2026-08-13). A CDN breaks offline use and puts a
+  third party in the request path of a project whose premise is not having one, and
+  vendoring the bundle is dead weight for two line charts and a bar chart — which came
+  to ~80 lines of hand-written SVG instead. Kept in this index so the deviation stays a
+  decision rather than drift; full reasoning in `dashboard/README.md`. Revisit only if a
+  chart type turns up that hand-rolled SVG makes genuinely painful.
+
 - **PWA basics (MDN)** — <https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps>
-  Read: web app manifest (name, icons, display: standalone). That alone gets
-  "Add to Home Screen" on iOS looking like a native app. Service worker optional
-  for v1 — the hub is always reachable via Tailscale anyway.
+  Read: web app manifest (name, icons, `display: standalone`), then service workers.
+  **The two are not the same milestone.** On iOS the manifest plus Apple's
+  `apple-mobile-web-app-capable` meta tag is enough for "Add to Home Screen" to launch
+  without browser chrome — that part is done. A service worker is a separate piece that
+  `dashboard/` does not have yet, and it requires a secure context, so it is blocked
+  behind Tailscale Serve (`HUB_SETUP.md` §5). It buys an offline shell and is the
+  prerequisite for push notifications — i.e. the still-open half of Bug_Backlog R-009.
+  If one is written: network-first for `/api/*`, cache-first for the static shell. A
+  cached reading rendered as though it were current is worse than no reading.
 
 ## Hub & networking
 

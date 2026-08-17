@@ -214,3 +214,16 @@ refresh();
 // The hub syncs three times a day, so polling harder buys nothing. Five minutes keeps
 // a tab left open honest without pretending this is real-time.
 setInterval(refresh, 5 * 60 * 1000);
+
+/* Register the service worker, which is what makes this installable rather than a
+ * bookmark. It requires a secure context: over Tailscale Serve's HTTPS this succeeds,
+ * over plain http on the LAN the promise rejects and the dashboard carries on working
+ * exactly as before. The failure is logged rather than swallowed — silence here would
+ * make "is it actually installed?" unanswerable from the phone. */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/sw.js")
+      .catch((err) => console.info("service worker not registered:", err.message));
+  });
+}

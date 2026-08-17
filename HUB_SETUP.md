@@ -89,6 +89,50 @@ and writes whatever it finds back to `~/.ssh/config`, so plain `ssh hub` stays c
 Run `tools/install_hub_shortcut.ps1` once to drop a "RavenX Hub" shortcut on the Desktop.
 Both become obsolete once Tailscale MagicDNS gives the hub a stable name.
 
+## 2a. Viewing any hub service from the desktop — the standing method
+
+**Default to an SSH tunnel. Do not open a firewall port to look at something.**
+
+**Run this on the desktop, in a terminal that is *not* already SSH'd into the hub.**
+Both machines use the username `warlock` and the hub's hostname is also `WARLOCK`, so
+the shell prompt is no help in telling them apart. Running it inside an existing SSH
+session fails with `Could not resolve hostname hub` — the `hub` alias exists only in the
+desktop's `~/.ssh/config`, and that error is the tell that you are on the wrong box.
+
+```bash
+ssh -L <local-port>:localhost:<hub-port> hub
+```
+
+Use the `hub` alias, not a literal address — §0's address is DHCP and `hub_connect.ps1`
+keeps `Host hub` in `~/.ssh/config` pointed at wherever the machine actually is.
+
+Leave that session sitting open and browse `http://localhost:<local-port>` on the
+desktop. Two in constant use:
+
+```bash
+ssh -L 8000:localhost:8000 hub   # the live dashboard
+ssh -L 8001:localhost:8001 hub   # a restore drill on 8001
+```
+
+Why this is the default rather than a workaround:
+
+- **`ufw` becomes irrelevant.** The traffic arrives inside an existing SSH connection on
+  port 22, which is already allowed. This sidesteps the failure in §6a entirely — the one
+  where a service works perfectly on the hub and is invisible from the network with no
+  error logged anywhere.
+- **Nothing new is exposed.** No LAN port, no rule to remember to delete later. A rule
+  added "just to check something" is exactly the kind that survives for months.
+- **It keeps working while the network is in pieces.** During the Tailscale and Mullvad
+  work in §5, routing is deliberately being broken and repaired. The tunnel rides SSH, so
+  it stays available as a way to see the dashboard even when the tailnet does not — which
+  makes it the fallback when you are trying to determine whether a change broke *routing*
+  or broke *the service*.
+- **A service bound to `127.0.0.1` is reachable this way and only this way**, which is
+  the right binding for anything temporary.
+
+Once Tailscale Serve is running, the tailnet URL replaces this for normal viewing. Keep
+the tunnel in the toolkit anyway; it is the thing that still works when Serve does not.
+
 ## 3. Verify Bluetooth (the ring's radio path)
 
 The 2014 Air has a Broadcom BT 4.0 chip; Mint usually supports it out of the box.
@@ -284,13 +328,75 @@ sudo dpkg-reconfigure -plow unattended-upgrades
 - Thermals: the 2014 Air throttles gracefully; keep the vent (rear hinge) unobstructed.
 - Battery: decade-old cell + permanent A/C is fine; it degrades to a small UPS, which
   is exactly what you want.
-- Backups: the SQLite file is the crown jewel. A nightly cron copying it to the
-  desktop PC (or anywhere) is two lines:
 
-  ```bash
-  crontab -e
-  # 0 4 * * * cp ~/Projects/RavenXSmartRing-data/ring.db ~/Projects/RavenXSmartRing-data/backups/ring-$(date +\%F).db
-  ```
+## 7a. Backups, and the restore drill that makes them real
+
+**Do not use `cp`.** The store runs in WAL mode, so a file copy taken while the sync
+service is mid-write can capture a database whose `-wal` sidecar it no longer matches —
+a copy that restores corrupt, which is worse than no copy because you believe in it.
+`tools/backup.py` uses SQLite's own backup API, which copies pages under a read lock and
+cannot be torn by a concurrent writer. It runs nightly at 04:00 under
+`ring-backup.timer`.
+
+Mint has no bare `python` — it is `python3`, and these run from the venv anyway, which
+is what the systemd units call. Run them from the repo root:
+
+```bash
+systemctl --user list-timers ring-backup          # confirm it is actually scheduled
+.venv/bin/python -m tools.backup                  # write, verify, rotate
+.venv/bin/python -m tools.backup --verify-only    # re-check every existing backup
+```
+
+**Verifying a backup is not restoring it.** `backup.py` checks the file it just wrote,
+in the process that wrote it. That answers "did the write succeed?" and never "could I
+get my data back?" `tools/restore.py` answers the second question — it copies a backup to
+a scratch directory, verifies it, then reads it back through `hub/db.py`'s own query
+functions, the same ones `hub/api.py` calls:
+
+```bash
+.venv/bin/python -m tools.restore --list
+.venv/bin/python -m tools.restore --latest
+```
+
+It refuses to write anywhere near the live store, so it cannot destroy the thing it is
+testing. Exit status is 0 only if the copy verified *and* served the read path, which
+makes it safe to schedule later. A store with a valid schema and zero rows is reported
+as a **failure**, not a success — that case passes `integrity_check` cleanly and is the
+one a checksum cannot catch.
+
+Finish the drill by looking at the data with your own eyes. `restore.py` prints this
+line with the real path filled in:
+
+```bash
+RAVENX_DATA_DIR=/tmp/ravenx-restore-<stamp> .venv/bin/uvicorn hub.api:app --port 8001
+```
+
+That command has no `--host`, so uvicorn binds `127.0.0.1` and the restore is reachable
+only from the hub itself — deliberate, since a drill should not be exposable by accident.
+View it with the tunnel from §2a, run on the **desktop**:
+
+```bash
+ssh -L 8001:localhost:8001 hub
+```
+
+Then open `http://localhost:8001` and confirm the heart-rate panel draws. Two details
+that keep the drill safe: it is port **8001**, so the live dashboard on 8000 is
+untouched, and `RAVENX_DATA_DIR` points at the restore directory, so nothing can write
+to the real store. Stop the uvicorn with Ctrl-C when done.
+
+If you only want a yes/no rather than a look, from a second SSH session on the hub:
+
+```bash
+curl -s localhost:8001/api/health
+```
+
+**Still your job: getting a copy off the hub.** Everything above lives on the same disk
+as the original, which covers corruption and mistakes but not that disk dying. From the
+desktop:
+
+```bash
+rsync -av warlock@10.0.0.213:~/Projects/RavenXSmartRing-data/backups/ ./backups/
+```
 
 ## 8. Verification checklist
 

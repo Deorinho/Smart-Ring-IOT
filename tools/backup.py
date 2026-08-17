@@ -15,9 +15,12 @@ Three things this does that `cp` does not:
 * **Rotates**, keeping the most recent N and deleting the rest, so a decade-old SSD does
   not fill with copies of itself.
 
-    python -m tools.backup                 # write, verify, rotate
-    python -m tools.backup --keep 30
-    python -m tools.backup --verify-only   # check existing backups, write nothing
+    .venv/bin/python -m tools.backup                 # write, verify, rotate
+    .venv/bin/python -m tools.backup --keep 30
+    .venv/bin/python -m tools.backup --verify-only   # check existing backups, nothing written
+
+The hub has no bare `python` — Mint ships `python3`, and the venv is what the systemd
+units call. On the Windows desktop plain `python` is correct.
 
 **Still your job:** getting a copy off the hub. Everything here lives on the same disk
 as the original, which protects against corruption and mistakes but not against that

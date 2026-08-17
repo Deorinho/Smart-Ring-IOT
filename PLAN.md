@@ -64,9 +64,26 @@ Design rules that hold across both:
 - **Storage is generic, not ring-shaped.** The hub is a personal telemetry store whose
   first source happens to be a ring, so the next hub project doesn't start from zero.
 
-**Open measurement gating B:** the R06's buffer depth. Ring put on 2026-08-02 00:30
-local, synced to nothing. Measured on first successful sync by walking `day_offset`
-backwards until the ring returns nothing.
+**Still open — the R06's buffer ceiling and how it expires.** Measured 2026-08-16 by
+walking `day_offset` backwards: full 24-frame bursts for every UTC day back to
+2026-08-09, and the no-data sentinel before that. But 08-09 is the day HR logging was
+enabled, so that floor is *the start of recording, not the buffer's edge* — **at least
+9 days, upper bound unknown.**
+
+This no longer gates B. Nine days covers a weekend and probably a week, so the satellite
+is wanted rather than needed. The number is still wanted for its own sake, and two
+separate things remain unmeasured:
+
+- **Capacity** — how many days the ring actually holds.
+- **Eviction** — how it expires. A ring that drops the oldest day cleanly behaves very
+  differently from one that wraps mid-day or returns a garbled partial, and the sync
+  service's idea of "this day is empty" depends on which.
+
+Both fall out of the same experiment: keep walking `day_offset` back as history
+accumulates — first around 2026-08-29 (~20 days), then periodically — until a day that
+was previously readable comes back as the sentinel. **That transition is the
+measurement.** The first day to disappear names the ceiling and the eviction policy at
+once, which is why it's worth catching rather than inferring.
 
 ## 4. Metrics — priority order
 
@@ -125,7 +142,7 @@ Calibrated to 2–4 hour sessions, roughly two per weekend plus one midweek.
 | **4** | **First real data** ✅ *(2026-08-09)* | 24-frame burst parsed into 28 samples over 13.5 h; resting HR 51 bpm; burst layout confirmed and frame-1 offsets corrected |
 | **5** | **Storage + read path** ✅ *(2026-08-13)* | Real samples in `ring.db`; re-ingest adds nothing; JSON API and dashboard render them |
 | **6** | **Sync service** ✅ *(2026-08-16)* | `hub/sync.py` under a systemd timer pulls and stores 3×/day unattended; dashboard, sync and backup all run as user units with linger enabled |
-| 7 | Remote access + a restored backup | Tailscale Serve so the dashboard opens on the iPhone as an installed PWA (R-001), the LAN `ufw` rule removed, and **one backup actually restored** (R-004, P1) |
+| **7** | **Remote access + a restored backup** ✅ *(2026-08-17)* | Tailscale Serve gives the tailnet a real cert; the PWA is installed on the iPhone and works **over cellular with WiFi off** and offline in airplane mode; the LAN `ufw` rule is deleted and the dashboard is tailnet-only; a real hub backup restored to 334 samples and rendered in a browser. **R-004 and R-001 both closed** — Mullvad and Tailscale coexist with no configuration. Reboot persistence carries over as R-017 |
 | 8 | Sleep | A real night renders as a stage sequence. Reverse-engineering, not porting (R-008) |
 | 9 | Analytics rollups | Resting HR, sleep duration, activity buckets, temperature baseline |
 | 10 | Sensing-flag hunt + hardening | Find what burns the 13%/day idle floor (R-014); longitudinal sanity checks |
@@ -168,6 +185,7 @@ Working code first — tests when they earn their place, not before.
 | Purpose of the second vendor service (`de5bf728…`) | Found during enumeration; likely bulk transfer. Confirm before assuming sleep data arrives on the command channel |
 | Ring reachability while charging | Bug_Backlog R-007; blocks `parse_battery`'s charging flag |
 | Whether the ring wants local or UTC time on the RTC | Session 2. Convert exactly once; storage stays UTC |
-| Tailscale + Mullvad coexistence on the hub | Bug_Backlog R-001; both manage routing |
-| SQLite backup with verified restore | Bug_Backlog R-004; session 9 |
+| Tailscale + Mullvad coexistence on the hub | **Closed 2026-08-17 — they coexist with no configuration.** Mullvad reconnected after the Tailscale bring-up and SSH, `tailscale status` and the phone dashboard all kept working; no split tunnelling was needed. Reboot persistence is untested and carries forward as R-017 |
+| SQLite backup with verified restore | **Closed 2026-08-17.** A real hub backup restored to 334 samples and rendered in a browser; `tools/restore.py` rejects seven corruption modes including a valid store with no rows. Automating the off-hub pull continues as R-016 |
+| Ring HR coverage ~88% of theoretical | Not a defect. 48/48 on 2026-08-15 but 39 on 08-14, i.e. per-day variation rather than a uniform shortfall — consistent with the ring being off the finger while charging. Revisit only if a day is short with no charging to explain it |
 | Dashboard layout preferences | Iterative once real data is on screen |
