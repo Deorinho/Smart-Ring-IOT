@@ -120,6 +120,27 @@ cd ~/Projects/RavenXSmartRing-IOT && python3 -m venv .venv && .venv/bin/pip inst
 .venv/bin/python -c "import bleak, fastapi; print('env ok')"
 ```
 
+**Never move or rename the repo directory without rebuilding the venv.** Python bakes
+an absolute path into the shebang of every console script in `.venv/bin`, so after a
+move `pip`, `uvicorn` and friends fail with `cannot execute: required file not found`.
+This bit once already: the venv was created at `~/projectring` before the directory
+became `~/Projects/RavenXSmartRing-IOT`.
+
+The trap is that it fails *selectively*. `.venv/bin/python3` is a symlink to the system
+interpreter and keeps working, so `python -m hub.sync` runs fine while
+`ring-dashboard.service` — which calls `.venv/bin/uvicorn` — dies at startup. You get a
+working sync, a dead dashboard, and no obvious connection between them. Verify both:
+
+```bash
+.venv/bin/python -c "import bleak, fastapi, uvicorn; print('deps ok')" && .venv/bin/uvicorn --version
+```
+
+The fix is always the same, and costs nothing because `requirements.txt` pins everything:
+
+```bash
+rm -rf .venv && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+```
+
 BLE smoke test (no ring needed — scans anything nearby):
 
 ```bash

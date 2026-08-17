@@ -137,10 +137,14 @@ def request_heart_rate_log(day_start: datetime) -> bytes:
     first response that arrives carries a 4-byte timestamp in its sub_type-1 packet —
     that field reveals the ring's frame of reference, and everything else follows.
 
-    If nothing lands at any epoch, that is itself the finding: a virgin ring may not
-    log at all until its clock is set. Record it and set the clock deliberately.
+    CONFIRMED 2026-08-09 against R06_D29C: requesting UTC midnight for the current day
+    returned a 24-frame burst. A day with nothing stored replies with a single frame
+    carrying `packets.NO_DATA_SUB_TYPE`.
     """
-    raise NotImplementedError
+    ts = int(day_start.astimezone(timezone.utc).timestamp())
+    if not 0 <= ts <= 0xFFFFFFFF:
+        raise ValueError(f"timestamp does not fit in 4 bytes: {ts}")
+    return build_packet(CMD_READ_HEART_RATE, ts.to_bytes(4, "little"))
 
 
 def request_hr_log_settings() -> bytes:
