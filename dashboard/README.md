@@ -6,6 +6,24 @@ Built to the **RX-06 Dashboard** design in the *RavenX Instruments branding* pro
 on **Nocturne**'s tokens. Four files, no build step: `index.html`, `style.css`,
 `app.js`, `manifest.json`. Edit and reload.
 
+## Where the design lives
+
+Claude Design projects, reachable with the `DesignSync` tool:
+
+| Project | ID | Type |
+| --- | --- | --- |
+| RavenX Instruments branding | `871fe223-6035-4a78-bf0d-77d7144460d8` | `PROJECT` |
+| Nocturne (design system) | `d5af71cd-d450-48ea-8f46-811902de8b15` | `DESIGN_SYSTEM` |
+
+**The branding project does not appear in `list_projects`** — that call returns only
+design-system projects, and this one is a regular project. Address it by ID via
+`get_project` / `list_files` / `get_file`, or it looks like it doesn't exist.
+
+Files worth knowing: `RX-06 Dashboard.dc.html` (this dashboard's design, both a
+first-light and a mature state), `RavenX Brand.dc.html`, `RavenX Ethos.dc.html`,
+`brand/mark-*.png`, and Nocturne vendored under `_ds/`. `mark-light.png` is the raven in
+`dashboard/mark.png`.
+
 ## The design's rules, and why the code follows them
 
 - **One status line.** Sync time, run count, clock offset — the three numbers that
