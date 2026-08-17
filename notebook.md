@@ -643,14 +643,88 @@ That is three bugs in one session found by attacking the artefact rather than re
 the code — the `seq` collision, the dashboard's mislabelled window, and this. The code
 looked right in all three cases.
 
+### Third half: the ring talks to the hub without being asked
+
+**The end goal, reached.** BLE → parser → SQLite → API → dashboard, on a timer, with
+nobody typing anything.
+
+```text
+INFO sensing policy already correct (HR every 30 min)
+INFO battery 62% (on battery)
+INFO 2026-08-17: 24 frames -> 2 samples
+INFO 2026-08-16: 24 frames -> 46 samples
+INFO 2026-08-15: 24 frames -> 48 samples
+INFO stored 136 new of 136 parsed samples
+```
+
+**48/48 on 2026-08-15** — a flawless day at 30-minute intervals. Measurement interval,
+slot arithmetic and clock all agreeing across 24 hours.
+
+### The buffer question, finally answered — with a caveat that matters
+
+Walking back 12 days: full 24-frame bursts for every UTC day from **08-09 to 08-17**,
+and the `0xFF` sentinel for 08-08 and earlier.
+
+**That floor is not the buffer's edge.** 08-09 is the day HR logging was enabled, so
+08-08 is empty because nothing was recorded, not because anything expired. The honest
+reading is **at least 9 days, upper bound still unknown**. Re-measure at ~20 days.
+
+Consequence for Architecture B: a weekend away loses *nothing*, and a week probably
+doesn't either — sync on return and the gap backfills. The ESP32 satellite drops from
+"necessary" to "wanted for its own sake", which is what it was always claimed to be.
+The decision to build it stands; its urgency doesn't.
+
+**Two things validated the chain beyond the sample counts.** 2026-08-09 returned 33
+samples — exactly the 16 h 53 m left in that UTC day after the clock was written at
+07:07. And re-pulling four already-stored days added zero rows: 333 parsed, 198 new,
+arithmetic exact. Idempotency proven on real hardware rather than a fixture.
+
+### The design landed
+
+Found the *RavenX Instruments branding* project — it holds an **RX-06 Dashboard**
+design built on Nocturne's tokens, and it is better than the generic dark theme I had
+invented. Rebuilt `dashboard/` against it: signal green for live, shop orange for
+not-yet, blurple for the data, one status line, a single elevated night panel, and the
+raven mark in the header.
+
+Its best idea is that **empty is a state, not a gap** — awaiting cards name the session
+that will fill them, so the dashboard reads as a build log you happen to wear. That is
+exactly honest right now: sleep and steps are dashed placeholders because neither parser
+exists.
+
+Two deviations, both recorded in `dashboard/README.md`: no Google Fonts `@import` (an
+external request would break offline use and put a third party in the path of a project
+premised on not having one), and the mark sits at 30 px rather than 20 px because the
+raven is hairline line art that turns to a smudge below ~28.
+
+### Three failures on the way to a working system
+
+- **`request_heart_rate_log` was never implemented.** Its signature was corrected in
+  session 4 and the body left raising `NotImplementedError`; `tools/probe_hr_log.py`
+  built that packet inline, which is exactly why the probe worked and the service died
+  on its first real run. Fixed, then verified by walking `hub/sync.py`'s call graph
+  against both protocol modules **programmatically** — eyeballing is what let it through.
+- **The venv had a dangling shebang.** It was created at `~/projectring` before the
+  directory became `~/Projects/RavenXSmartRing-IOT`, and venvs bake absolute paths into
+  every console script. It failed *selectively*: `.venv/bin/python3` is a symlink and
+  kept working, so `hub.sync` ran while `ring-dashboard.service` would have died calling
+  `.venv/bin/uvicorn`.
+- **`ufw` was silently eating the dashboard.** Active by default with deny-incoming and
+  a single port-22 rule that `openssh-server` added back in session 1. SSH walked through
+  the one door in the wall while every service since was invisible — dropped, not
+  refused, so nothing logged anywhere. It presents as "the server stopped responding".
+
+All three are now documented in `HUB_SETUP.md`, because each cost real time and each
+will recur on the next machine.
+
 ### Open after session 5
 
-- **`hub/sync.py` has never touched a ring.** It is the only hub-only module, written
-  blind on a machine with no BLE adapter. Its first real run will surface something.
-- Tailscale is not installed, so the dashboard is LAN-only and cannot be installed as a
-  PWA (no HTTPS, no service worker). R-001.
-- No backup has been restored yet. The tool verifies its own output, which is the
-  automated half; the human half is restoring one somewhere and looking at it.
-- Buffer depth still unmeasured — one command, and it decides how urgent the ESP32
-  satellite is.
-- Sleep (R-008) and the idle-drain sensing flags (R-014) remain the two big unknowns.
+- **Tailscale.** The last piece of the original brief. The dashboard is LAN-only behind
+  a `ufw` rule that should be deleted once Serve is running, and iOS will not register a
+  service worker over plain HTTP — so "Add to Home Screen" gives a bookmark, not an app.
+- **No backup has been restored.** `tools/backup.py` verifies its own output; restoring
+  one and looking at it is still unowned, and R-004 stays P1 until it happens.
+- **`sync.py` never fills `ring_clock_utc` or `clock_offset_s`.** The columns exist for
+  R-002 and the sync leaves them null, so clock drift remains unmeasured on real runs.
+- Sleep (R-008) and the idle-drain sensing flags (R-014) are still the two big unknowns.
+- Buffer depth needs re-measuring at ~20 days to find its real limit.

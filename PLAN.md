@@ -124,8 +124,8 @@ Calibrated to 2–4 hour sessions, roughly two per weekend plus one midweek.
 | **3** | **Raw log dump + why it was empty** ✅ *(2026-08-09)* | Three virgin captures banked; `0xFF` no-data sentinel identified; **HR logging found disabled from the factory** and enabled; RTC set in UTC |
 | **4** | **First real data** ✅ *(2026-08-09)* | 24-frame burst parsed into 28 samples over 13.5 h; resting HR 51 bpm; burst layout confirmed and frame-1 offsets corrected |
 | **5** | **Storage + read path** ✅ *(2026-08-13)* | Real samples in `ring.db`; re-ingest adds nothing; JSON API and dashboard render them |
-| 6 | Sync service | `hub/sync.py` under a systemd timer pulls and stores 3×/day unattended and survives a reboot — no human running a script |
-| 7 | Backups + remote access | `sqlite3 .backup` on a timer with **one verified restore** (R-004, P1), then Tailscale so the dashboard opens on the iPhone (R-001) |
+| **6** | **Sync service** ✅ *(2026-08-16)* | `hub/sync.py` under a systemd timer pulls and stores 3×/day unattended; dashboard, sync and backup all run as user units with linger enabled |
+| 7 | Remote access + a restored backup | Tailscale Serve so the dashboard opens on the iPhone as an installed PWA (R-001), the LAN `ufw` rule removed, and **one backup actually restored** (R-004, P1) |
 | 8 | Sleep | A real night renders as a stage sequence. Reverse-engineering, not porting (R-008) |
 | 9 | Analytics rollups | Resting HR, sleep duration, activity buckets, temperature baseline |
 | 10 | Sensing-flag hunt + hardening | Find what burns the 13%/day idle floor (R-014); longitudinal sanity checks |
