@@ -52,9 +52,15 @@ alternative (a Pi-class box running the same Python) was costed as cheaper and f
 and **deliberately declined** — the embedded firmware work is wanted for its own sake.
 Do not re-propose it.
 
-**Open measurement that gates B:** the R06's onboard buffer depth. Ring put on
-2026-08-02 00:30 local (04:30 UTC), synced to nothing. Measured on the first successful
-hub sync. That number sets sync cadence, the battery ceiling, and how urgent B is.
+**Buffer depth, measured 2026-08-16: at least 9 days.** The ring returned full bursts
+for every UTC day back to 2026-08-09 — the day HR logging was enabled — and the no-data
+sentinel before that. The floor found is the start of recording, not the buffer's edge,
+so the true limit is still unknown and larger. Re-measure once ~20 days have accumulated.
+
+**What that does to Architecture B:** a weekend away loses nothing, and a week-long stay
+probably doesn't either — sync on return and the gap backfills. The satellite now matters
+only for the 2–3 week visits, so it is wanted rather than needed. That does not change
+the decision to build it; it changes its urgency.
 
 ## Source-of-truth documents
 

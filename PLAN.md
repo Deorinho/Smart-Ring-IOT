@@ -163,7 +163,7 @@ Working code first — tests when they earn their place, not before.
 
 | Item | Status |
 | --- | --- |
-| Ring buffer depth | **Not yet measurable** — logging was disabled from the factory, so the first six days recorded nothing. The clock restarted 2026-08-09; measure once real data has accumulated. Still gates Architecture B. |
+| Ring buffer depth | **At least 9 days, upper bound still unknown.** Measured 2026-08-16: the ring returned full 24-frame bursts for every UTC day from 2026-08-09 to 2026-08-17 and the no-data sentinel for 08-08 and earlier. That floor is *when logging was enabled*, not where the buffer ends — the real limit is still beyond the data. Re-measure once ~20 days have accumulated. |
 | Command opcodes beyond `CMD_BATTERY` | GATT UUIDs and `CMD_BATTERY = 0x03` confirmed 2026-08-02. Log, sleep, and time opcodes still `TODO(confirm)` |
 | Purpose of the second vendor service (`de5bf728…`) | Found during enumeration; likely bulk transfer. Confirm before assuming sleep data arrives on the command channel |
 | Ring reachability while charging | Bug_Backlog R-007; blocks `parse_battery`'s charging flag |

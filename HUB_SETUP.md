@@ -245,6 +245,35 @@ journalctl --user -u ring-dashboard -f    # live logs
 
 The BLE sync service gets an identical unit later (`ring-sync.service`).
 
+## 6a. The firewall will silently eat your first service
+
+Mint ships `ufw` **active**, defaulting to deny-incoming, and installing
+`openssh-server` adds an allow rule for port 22 automatically. The result is a machine
+where SSH works perfectly and every service you subsequently run is invisible from the
+network — with no error anywhere, because the packets are dropped rather than refused.
+It presents as "the server stopped responding" in a browser.
+
+Diagnose it in two commands. If the process is bound correctly and the port still times
+out from another machine, it is the firewall:
+
+```bash
+ss -tlnp | grep 8000
+```
+
+```bash
+sudo ufw status verbose
+```
+
+Scope the rule to the LAN rather than opening it to anywhere:
+
+```bash
+sudo ufw allow from 10.0.0.0/24 to any port 8000 proto tcp comment 'RavenX dashboard (LAN)'
+```
+
+**Delete this rule once Tailscale Serve is running.** Serve receives on the `tailscale0`
+interface and proxies to localhost, so no inbound LAN port is required — and then the
+dashboard is reachable only from your own devices instead of anything on the WiFi.
+
 ## 7. Hygiene for a 24/7 box
 
 ```bash
