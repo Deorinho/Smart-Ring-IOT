@@ -64,9 +64,26 @@ Design rules that hold across both:
 - **Storage is generic, not ring-shaped.** The hub is a personal telemetry store whose
   first source happens to be a ring, so the next hub project doesn't start from zero.
 
-**Open measurement gating B:** the R06's buffer depth. Ring put on 2026-08-02 00:30
-local, synced to nothing. Measured on first successful sync by walking `day_offset`
-backwards until the ring returns nothing.
+**Still open — the R06's buffer ceiling and how it expires.** Measured 2026-08-16 by
+walking `day_offset` backwards: full 24-frame bursts for every UTC day back to
+2026-08-09, and the no-data sentinel before that. But 08-09 is the day HR logging was
+enabled, so that floor is *the start of recording, not the buffer's edge* — **at least
+9 days, upper bound unknown.**
+
+This no longer gates B. Nine days covers a weekend and probably a week, so the satellite
+is wanted rather than needed. The number is still wanted for its own sake, and two
+separate things remain unmeasured:
+
+- **Capacity** — how many days the ring actually holds.
+- **Eviction** — how it expires. A ring that drops the oldest day cleanly behaves very
+  differently from one that wraps mid-day or returns a garbled partial, and the sync
+  service's idea of "this day is empty" depends on which.
+
+Both fall out of the same experiment: keep walking `day_offset` back as history
+accumulates — first around 2026-08-29 (~20 days), then periodically — until a day that
+was previously readable comes back as the sentinel. **That transition is the
+measurement.** The first day to disappear names the ceiling and the eviction policy at
+once, which is why it's worth catching rather than inferring.
 
 ## 4. Metrics — priority order
 
