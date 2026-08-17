@@ -120,6 +120,27 @@ cd ~/Projects/RavenXSmartRing-IOT && python3 -m venv .venv && .venv/bin/pip inst
 .venv/bin/python -c "import bleak, fastapi; print('env ok')"
 ```
 
+**Never move or rename the repo directory without rebuilding the venv.** Python bakes
+an absolute path into the shebang of every console script in `.venv/bin`, so after a
+move `pip`, `uvicorn` and friends fail with `cannot execute: required file not found`.
+This bit once already: the venv was created at `~/projectring` before the directory
+became `~/Projects/RavenXSmartRing-IOT`.
+
+The trap is that it fails *selectively*. `.venv/bin/python3` is a symlink to the system
+interpreter and keeps working, so `python -m hub.sync` runs fine while
+`ring-dashboard.service` — which calls `.venv/bin/uvicorn` — dies at startup. You get a
+working sync, a dead dashboard, and no obvious connection between them. Verify both:
+
+```bash
+.venv/bin/python -c "import bleak, fastapi, uvicorn; print('deps ok')" && .venv/bin/uvicorn --version
+```
+
+The fix is always the same, and costs nothing because `requirements.txt` pins everything:
+
+```bash
+rm -rf .venv && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+```
+
 BLE smoke test (no ring needed — scans anything nearby):
 
 ```bash
@@ -134,16 +155,64 @@ asyncio.run(main())"
 
 ## 5. Tailscale (secure access from anywhere, no port forwarding)
 
+**Read this before running anything: Mullvad is already on this hub** (Bug_Backlog
+R-001). Two WireGuard clients both asserting control over routing and firewall rules is
+the single most likely way to lock yourself out of a headless machine. Change one thing
+at a time.
+
+**Step 1 — prove Tailscale works with Mullvad out of the way.**
+
+```bash
+mullvad disconnect
+```
+
 ```bash
 curl -fsSL https://tailscale.com/install.sh | sh
+```
+
+```bash
 sudo tailscale up
 ```
 
-Authenticate in the browser link it prints. Install the Tailscale app on the iPhone
-and iPad with the same account. The hub gets a stable `100.x.x.x` address and a
-MagicDNS name — the dashboard URL will be `http://<hub-name>:8000` from any of
-your devices, anywhere, encrypted end to end. No data touches a third-party server;
-Tailscale only coordinates the connection.
+Authenticate via the printed link, install the Tailscale app on the iPhone under the
+same account, and confirm the hub answers on its `100.x.x.x` address. Only once that
+works should Mullvad come back.
+
+**Step 2 — HTTPS, which the PWA needs.**
+
+A service worker requires a secure context, so `http://100.x.x.x:8000` can never be
+installed as a real home-screen app. Tailscale Serve issues a genuine certificate for
+the tailnet name:
+
+```bash
+sudo tailscale serve --bg 8000
+```
+
+`tailscale serve status` prints the `https://<hub>.<tailnet>.ts.net` URL. That is the
+address to open on the phone — not the raw port.
+
+Note this is `serve`, not `funnel`. Serve is tailnet-only; nothing is exposed to the
+public internet, and the privacy claim stays intact. Funnel would only be needed for the
+Architecture B satellite's `/ingest`, which does not exist yet.
+
+**Step 3 — reintroduce Mullvad and find out what breaks.**
+
+```bash
+mullvad connect
+```
+
+Then immediately re-test, in this order: SSH from the desktop, `tailscale status`, and
+the dashboard from the phone. If Tailscale traffic dies, Mullvad's firewall is capturing
+it — LAN sharing does not cover `100.64.0.0/10`, because the tailnet is not your LAN.
+
+The fix is split tunnelling `tailscaled` out of Mullvad (`mullvad split-tunnel --help`
+on this version), or dropping Mullvad on the hub and using Tailscale's own Mullvad exit
+node instead, which puts one client in charge of routing rather than two. Whichever you
+pick, record it here — this is exactly the interaction that eats a session when it
+surprises someone six weeks later.
+
+**Step 4 — install the PWA.** On the iPhone, open the `https://` URL in Safari, then
+Share → Add to Home Screen. It launches without browser chrome and keeps its own icon.
 
 ## 6. Service skeleton (systemd user units)
 
@@ -175,6 +244,35 @@ journalctl --user -u ring-dashboard -f    # live logs
 ```
 
 The BLE sync service gets an identical unit later (`ring-sync.service`).
+
+## 6a. The firewall will silently eat your first service
+
+Mint ships `ufw` **active**, defaulting to deny-incoming, and installing
+`openssh-server` adds an allow rule for port 22 automatically. The result is a machine
+where SSH works perfectly and every service you subsequently run is invisible from the
+network — with no error anywhere, because the packets are dropped rather than refused.
+It presents as "the server stopped responding" in a browser.
+
+Diagnose it in two commands. If the process is bound correctly and the port still times
+out from another machine, it is the firewall:
+
+```bash
+ss -tlnp | grep 8000
+```
+
+```bash
+sudo ufw status verbose
+```
+
+Scope the rule to the LAN rather than opening it to anywhere:
+
+```bash
+sudo ufw allow from 10.0.0.0/24 to any port 8000 proto tcp comment 'RavenX dashboard (LAN)'
+```
+
+**Delete this rule once Tailscale Serve is running.** Serve receives on the `tailscale0`
+interface and proxies to localhost, so no inbound LAN port is required — and then the
+dashboard is reachable only from your own devices instead of anything on the WiFi.
 
 ## 7. Hygiene for a 24/7 box
 

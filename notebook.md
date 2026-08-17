@@ -504,3 +504,227 @@ archiving raw frames.
 - Storage. 28 parsed `Sample` objects exist in memory and `hub/schema.sql` has never
   been executed.
 - Sleep (R-008) remains the largest unmapped piece of the protocol.
+
+## 2026-08-13 — Session 5: storage, an API, and a dashboard
+
+Autonomous session — free rein to build and triage, reviewed at the end. **The vertical
+slice is complete: ring → parser → SQLite → JSON API → dashboard.**
+
+### The battery number changed everything about the battery plan
+
+A reading of **18%** landed the picture that four days of guessing hadn't:
+
+```text
+100% -> 96%   first 14 h     =  6.7 %/day   <- the misleading one
+ 96% -> 18%   next 4.2 days  = 18.8 %/day
+100% -> 18%   overall        = 17.2 %/day
+```
+
+**~5.5 days per charge.** And because the factory week ran ~13%/day with HR logging
+*disabled*, PPG at 30-minute intervals costs only about **5%/day** — the other 13 is an
+idle floor that no sensing schedule can reach. Tuning the HR interval is therefore
+nearly pointless; halving it buys ~2.5%/day. The whole battery strategy in `CLAUDE.md`
+was aimed at the wrong consumer and has been rewritten.
+
+Last session's 6.7%/day estimate was wrong by ~3×, from exactly the trap flagged when it
+was made: the gauge runs 0.28%/h for the first 14 hours and 0.78%/h after. That is now a
+standing rule in `CLAUDE.md` — never estimate this ring's drain from day one of a charge.
+
+### Built this session
+
+- **`hub/db.py`** — thin I/O over the schema. Idempotent inserts, sync-run bookkeeping,
+  raw-frame archival, query helpers. No parsing, no analytics.
+- **`hub/api.py`** — read-only JSON API plus PWA host. It has no write path at all, so a
+  bug in the reader cannot corrupt the store.
+- **`dashboard/`** — dark, phone-first PWA. Tiles, a heart-rate line chart with 24 h /
+  7 d / 30 d ranges, a per-day min-mean-max chart, and sync history.
+- **`tools/ingest_capture.py`** — capture JSON → parser → database, entirely offline.
+- `requirements.txt`, a systemd user unit for the dashboard, and an `RAVENX_DATA_DIR`
+  override so development never touches the real store.
+
+**No Chart.js**, despite `PLAN.md` naming it. A CDN breaks offline use and puts a third
+party in the request path of a project whose premise is not having one; vendoring a
+bundle is dead weight. Two line charts and a bar chart came to ~80 lines of hand-written
+SVG. Recorded in `dashboard/README.md` so the deviation is a decision, not drift.
+
+### Two bugs I wrote and caught
+
+**`raw_payloads` was silently discarding a third of every capture.** After the first
+ingest the table held 48 rows where 76 were expected. `store_raw_payloads` restarted
+`seq` at 0 for each probe, so `UNIQUE (sync_run_id, seq)` quietly swallowed all fourteen
+sentinel frames sitting behind the 24-frame burst. The archive built specifically so no
+byte is ever lost was losing bytes. Found only by counting rows against expectation —
+nothing errored, nothing warned. `seq_start` is now an explicit parameter with the trap
+written into its docstring, and the ingest tool reports a mismatch if it recurs.
+
+**The dashboard lied about its own window.** Switching to 7 d left the tiles reading
+"Lowest 24 h" and "Mean 24 h" over seven days of data. Found by opening the page and
+clicking the button — not by reading the code, which looked fine. Also fixed: per-reading
+dots are suppressed above 60 points, since 30 days would have drawn ~1,400 circles.
+
+Both are the same lesson from different angles: **verify against the artefact, not the
+intention.** Counting rows and clicking a button each found something a code read did not.
+
+### Verified, not asserted
+
+Storage is portable by design, so all of this ran on the Windows desktop with no ring
+attached:
+
+```text
+ingest run 1 : 38 frames archived, 28 samples parsed, 28 newly stored
+ingest run 2 : 38 frames archived, 28 samples parsed,  0 newly stored
+sentinel-only captures: ingest cleanly, 0 samples, no crash
+```
+
+The dashboard was checked in a real browser at 375 px: no console errors, no horizontal
+overflow, range switching correct, axis labels flipping from clock times to dates on
+multi-day windows.
+
+### Triage
+
+- **R-004 escalated to P1.** There is now irreplaceable data on a decade-old SSD with no
+  backup. `sqlite3 .backup` rather than `cp`, off the hub, and **restore one** before
+  believing it.
+- **R-001 escalated to P2.** A dashboard exists that the phone cannot reach. Tailscale
+  Serve also solves the HTTPS the PWA needs for a service worker.
+- **R-006 closed** — the bleak/colmi conflict was avoided rather than managed; the
+  reference is read, never installed.
+- Roadmap re-sequenced. The old "FastAPI + dashboard" row is gone, and the next two
+  sessions are the **sync service** and **backups + remote access** — neither adds a
+  metric, and both matter more than the next metric does.
+
+### Second half: the pipeline learns to run itself
+
+- **`hub/sync.py`** — scan, connect, reconcile the sensing policy, read battery, pull
+  the last few UTC days of heart rate, archive every frame, store, disconnect. One
+  attempt per invocation, then exit: a script under a timer rather than a daemon, so
+  there is no long-lived connection to leak and every sync is a discrete journald entry.
+  It reads the ring's HR settings before writing them, so a pointless flash write is
+  avoided on every sync *and* any drift the hub didn't cause shows up in the log rather
+  than as an unexplained battery cliff.
+- **Four systemd user units** — `ring-sync.service` + `.timer` (08:00, 14:00, 22:00
+  local, `Persistent=true`), and `ring-backup.service` + `.timer` (04:00 nightly).
+- **`tools/backup.py`** — R-004, the standing P1. Uses SQLite's backup API rather than
+  `cp`, because the store runs in WAL mode and a file copy taken mid-write can produce a
+  database that restores corrupt. Verifies every backup it writes with
+  `PRAGMA integrity_check` plus a row-count comparison against the source, and rotates.
+- **`HUB_SETUP.md` §5 rewritten** as a Tailscale runbook that treats Mullvad as the
+  hazard it is: disconnect Mullvad, prove Tailscale works, add `tailscale serve` for the
+  HTTPS the PWA needs, *then* reintroduce Mullvad and see what breaks. One change at a
+  time, on a headless machine you can lock yourself out of.
+
+**`serve`, not `funnel`.** Serve is tailnet-only, so nothing is exposed publicly and the
+privacy claim survives intact. Funnel would only be needed for Architecture B's
+`/ingest`, which doesn't exist.
+
+### Two more bugs, both caught by deliberate hostility
+
+**The scan sat outside the try block in `sync.py`.** A powered-off or not-yet-ready
+adapter would have escaped as an uncaught traceback instead of being recorded as a
+failed run — which is *precisely* the "works by hand, never after a reboot" symptom
+R-005 was logged to predict eight days ago. Writing the unit file is what surfaced it:
+adding `After=bluetooth.target` prompted the question "and what happens if it fires
+anyway?"
+
+**`verify()` in the backup tool leaked an exception instead of reporting.** The first
+corruption test zeroed 200 bytes and `integrity_check` said "ok" — correctly, as it
+turned out; those bytes were page-1 free space. A weak test that passes is worse than no
+test, so the second attempt truncated one file, zeroed a whole data page in another, and
+added an empty one. All three now fail cleanly and the tool exits non-zero:
+
+```text
+FAIL  truncated    unreadable: database disk image is malformed
+FAIL  zeroed page  integrity_check: btreeInitPage() returns error code 11
+OK    intact       integrity ok, 75 rows across 7 tables
+FAIL  empty        missing or empty
+```
+
+That is three bugs in one session found by attacking the artefact rather than reading
+the code — the `seq` collision, the dashboard's mislabelled window, and this. The code
+looked right in all three cases.
+
+### Third half: the ring talks to the hub without being asked
+
+**The end goal, reached.** BLE → parser → SQLite → API → dashboard, on a timer, with
+nobody typing anything.
+
+```text
+INFO sensing policy already correct (HR every 30 min)
+INFO battery 62% (on battery)
+INFO 2026-08-17: 24 frames -> 2 samples
+INFO 2026-08-16: 24 frames -> 46 samples
+INFO 2026-08-15: 24 frames -> 48 samples
+INFO stored 136 new of 136 parsed samples
+```
+
+**48/48 on 2026-08-15** — a flawless day at 30-minute intervals. Measurement interval,
+slot arithmetic and clock all agreeing across 24 hours.
+
+### The buffer question, finally answered — with a caveat that matters
+
+Walking back 12 days: full 24-frame bursts for every UTC day from **08-09 to 08-17**,
+and the `0xFF` sentinel for 08-08 and earlier.
+
+**That floor is not the buffer's edge.** 08-09 is the day HR logging was enabled, so
+08-08 is empty because nothing was recorded, not because anything expired. The honest
+reading is **at least 9 days, upper bound still unknown**. Re-measure at ~20 days.
+
+Consequence for Architecture B: a weekend away loses *nothing*, and a week probably
+doesn't either — sync on return and the gap backfills. The ESP32 satellite drops from
+"necessary" to "wanted for its own sake", which is what it was always claimed to be.
+The decision to build it stands; its urgency doesn't.
+
+**Two things validated the chain beyond the sample counts.** 2026-08-09 returned 33
+samples — exactly the 16 h 53 m left in that UTC day after the clock was written at
+07:07. And re-pulling four already-stored days added zero rows: 333 parsed, 198 new,
+arithmetic exact. Idempotency proven on real hardware rather than a fixture.
+
+### The design landed
+
+Found the *RavenX Instruments branding* project — it holds an **RX-06 Dashboard**
+design built on Nocturne's tokens, and it is better than the generic dark theme I had
+invented. Rebuilt `dashboard/` against it: signal green for live, shop orange for
+not-yet, blurple for the data, one status line, a single elevated night panel, and the
+raven mark in the header.
+
+Its best idea is that **empty is a state, not a gap** — awaiting cards name the session
+that will fill them, so the dashboard reads as a build log you happen to wear. That is
+exactly honest right now: sleep and steps are dashed placeholders because neither parser
+exists.
+
+Two deviations, both recorded in `dashboard/README.md`: no Google Fonts `@import` (an
+external request would break offline use and put a third party in the path of a project
+premised on not having one), and the mark sits at 30 px rather than 20 px because the
+raven is hairline line art that turns to a smudge below ~28.
+
+### Three failures on the way to a working system
+
+- **`request_heart_rate_log` was never implemented.** Its signature was corrected in
+  session 4 and the body left raising `NotImplementedError`; `tools/probe_hr_log.py`
+  built that packet inline, which is exactly why the probe worked and the service died
+  on its first real run. Fixed, then verified by walking `hub/sync.py`'s call graph
+  against both protocol modules **programmatically** — eyeballing is what let it through.
+- **The venv had a dangling shebang.** It was created at `~/projectring` before the
+  directory became `~/Projects/RavenXSmartRing-IOT`, and venvs bake absolute paths into
+  every console script. It failed *selectively*: `.venv/bin/python3` is a symlink and
+  kept working, so `hub.sync` ran while `ring-dashboard.service` would have died calling
+  `.venv/bin/uvicorn`.
+- **`ufw` was silently eating the dashboard.** Active by default with deny-incoming and
+  a single port-22 rule that `openssh-server` added back in session 1. SSH walked through
+  the one door in the wall while every service since was invisible — dropped, not
+  refused, so nothing logged anywhere. It presents as "the server stopped responding".
+
+All three are now documented in `HUB_SETUP.md`, because each cost real time and each
+will recur on the next machine.
+
+### Open after session 5
+
+- **Tailscale.** The last piece of the original brief. The dashboard is LAN-only behind
+  a `ufw` rule that should be deleted once Serve is running, and iOS will not register a
+  service worker over plain HTTP — so "Add to Home Screen" gives a bookmark, not an app.
+- **No backup has been restored.** `tools/backup.py` verifies its own output; restoring
+  one and looking at it is still unowned, and R-004 stays P1 until it happens.
+- **`sync.py` never fills `ring_clock_utc` or `clock_offset_s`.** The columns exist for
+  R-002 and the sync leaves them null, so clock drift remains unmeasured on real runs.
+- Sleep (R-008) and the idle-drain sensing flags (R-014) are still the two big unknowns.
+- Buffer depth needs re-measuring at ~20 days to find its real limit.

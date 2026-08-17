@@ -23,7 +23,7 @@ Two guardrails:
 
 | Unit | Role | State |
 | --- | --- | --- |
-| Colmi R06, size 10 | **DAILY + DEV** | Worn every day; the ring the hub is built against. Factory-virgin — never paired, RTC never set. `R06_D29C` @ `81:5F:4A:87:D2:9C` |
+| Colmi R06, size 10 | **DAILY + DEV** | Worn every day; the ring the hub is built against. `R06_D29C` @ `81:5F:4A:87:D2:9C`. Never connected to QRing. RTC set to UTC 2026-08-09; HR logging enabled at 30 min. ~5.5 days per charge. |
 | Colmi R09, size 12 | **SHOWCASE + ORACLE** | For the video. On the stock QRing app as a validation oracle; migrates to the hub at the end. |
 
 No further ring purchases. End state: both rings running the same software, then one
@@ -123,13 +123,18 @@ Calibrated to 2–4 hour sessions, roughly two per weekend plus one midweek.
 | **2** | **GATT enumeration + battery round-trip** ✅ *(2026-08-02)* | Both vendor services mapped, chipset identified, `03 → 03 50 … 53` with checksum verified |
 | **3** | **Raw log dump + why it was empty** ✅ *(2026-08-09)* | Three virgin captures banked; `0xFF` no-data sentinel identified; **HR logging found disabled from the factory** and enabled; RTC set in UTC |
 | **4** | **First real data** ✅ *(2026-08-09)* | 24-frame burst parsed into 28 samples over 13.5 h; resting HR 51 bpm; burst layout confirmed and frame-1 offsets corrected |
-| 5 | SQLite store wired up | First real rows land; re-running the sync changes nothing |
-| 6 | Sleep parsing + events | One real night renders as a stage sequence |
-| 7 | Analytics rollups | Daily/weekly summaries from real data |
-| 8 | FastAPI + dashboard | Charts render on the iPhone over Tailscale |
-| 9 | Automation | systemd timer syncs 3×/day unattended, survives reboot |
-| 10 | Hardening | Backups with verified restore; clock-offset correction; sanity checks |
+| **5** | **Storage + read path** ✅ *(2026-08-13)* | Real samples in `ring.db`; re-ingest adds nothing; JSON API and dashboard render them |
+| **6** | **Sync service** ✅ *(2026-08-16)* | `hub/sync.py` under a systemd timer pulls and stores 3×/day unattended; dashboard, sync and backup all run as user units with linger enabled |
+| 7 | Remote access + a restored backup | Tailscale Serve so the dashboard opens on the iPhone as an installed PWA (R-001), the LAN `ufw` rule removed, and **one backup actually restored** (R-004, P1) |
+| 8 | Sleep | A real night renders as a stage sequence. Reverse-engineering, not porting (R-008) |
+| 9 | Analytics rollups | Resting HR, sleep duration, activity buckets, temperature baseline |
+| 10 | Sensing-flag hunt + hardening | Find what burns the 13%/day idle floor (R-014); longitudinal sanity checks |
 | 11+ | Architecture B | ESP32-C3 satellite, then video production |
+
+Re-sequenced 2026-08-13. Session 5 delivered the dashboard early because storage made it
+nearly free, so the old "FastAPI + dashboard" row is gone. The two things now standing
+between this and a system that runs itself are the **sync service** and **backups** —
+neither adds a metric, and both matter more than the next metric does.
 
 Session 3 is the deferred half of session 2 — the log dump was split off deliberately
 rather than rushed at the end of a session, since it's a one-shot observation on a
@@ -158,7 +163,7 @@ Working code first — tests when they earn their place, not before.
 
 | Item | Status |
 | --- | --- |
-| Ring buffer depth | **Not yet measurable** — logging was disabled from the factory, so the first six days recorded nothing. The clock restarted 2026-08-09; measure once real data has accumulated. Still gates Architecture B. |
+| Ring buffer depth | **At least 9 days, upper bound still unknown.** Measured 2026-08-16: the ring returned full 24-frame bursts for every UTC day from 2026-08-09 to 2026-08-17 and the no-data sentinel for 08-08 and earlier. That floor is *when logging was enabled*, not where the buffer ends — the real limit is still beyond the data. Re-measure once ~20 days have accumulated. |
 | Command opcodes beyond `CMD_BATTERY` | GATT UUIDs and `CMD_BATTERY = 0x03` confirmed 2026-08-02. Log, sleep, and time opcodes still `TODO(confirm)` |
 | Purpose of the second vendor service (`de5bf728…`) | Found during enumeration; likely bulk transfer. Confirm before assuming sleep data arrives on the command channel |
 | Ring reachability while charging | Bug_Backlog R-007; blocks `parse_battery`'s charging flag |

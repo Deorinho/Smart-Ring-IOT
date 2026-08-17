@@ -1,0 +1,18 @@
+{
+  "name": "RavenX Instruments RX-06",
+  "short_name": "RX-06",
+  "description": "Self-hosted health data from a Colmi R06. No cloud, no account.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#101120",
+  "theme_color": "#101120",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+# RavenX BLE sync — one attempt, then exit. Scheduled by ring-sync.timer.
+#
+#     cp hub/systemd/ring-sync.* ~/.config/systemd/user/
+#     systemctl --user daemon-reload
+#     systemctl --user enable --now ring-sync.timer
+#     systemctl --user start ring-sync.service     # run one now, by hand
+#     journalctl --user -u ring-sync -f
+#
+# Type=oneshot because this is a script, not a daemon. Nothing holds a BLE connection
+# between runs, so there is no state to leak and no scheduler of our own to debug —
+# each sync is a discrete journald entry you can point at.
+#
+# After=bluetooth.target matters here (Bug_Backlog R-005): the Bluetooth stack comes up
+# ~43 s into boot on this machine, and a Persistent timer firing at boot would otherwise
+# meet no adapter. The service also handles a missing adapter internally and records it,
+# so ordering is belt and braces rather than the only defence.
+#
+# An unreachable ring exits 0 on purpose. It is on a hand that leaves the house, so
+# "not found" is a normal outcome several times a day — a unit that reports failure
+# every time you go to work is a unit you learn to ignore.
+
+[Unit]
+Description=RavenX Smart Ring BLE sync
+After=bluetooth.target network.target
+Wants=bluetooth.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/Projects/RavenXSmartRing-IOT
+ExecStart=%h/Projects/RavenXSmartRing-IOT/.venv/bin/python -m hub.sync
+Environment=PYTHONUNBUFFERED=1
+
+# The service has its own overall timeout; this is the outer backstop.
+TimeoutStartSec=300
+
+[Install]
+WantedBy=default.target

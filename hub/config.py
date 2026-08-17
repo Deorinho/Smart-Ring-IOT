@@ -7,6 +7,7 @@ path, or a sensing interval.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -15,9 +16,14 @@ from pathlib import Path
 # Data deliberately sits OUTSIDE the working tree so a git pull, branch switch, or
 # clean can never touch it — the SQLite file is the one irreplaceable thing here.
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DATA_DIR = Path.home() / "Projects" / "RavenXSmartRing-data"
+DATA_DIR = Path(
+    os.environ.get("RAVENX_DATA_DIR", Path.home() / "Projects" / "RavenXSmartRing-data")
+)
 DB_PATH = DATA_DIR / "ring.db"
 SCHEMA_PATH = REPO_ROOT / "hub" / "schema.sql"
+
+# RAVENX_DATA_DIR exists so the API and dashboard can be pointed at a throwaway store
+# during development without touching the real one. Nothing in production sets it.
 
 
 # --- Devices ---------------------------------------------------------------
@@ -77,5 +83,16 @@ SYNC_HOURS_LOCAL: tuple[int, ...] = (8, 14, 22)
 # how hard it tries before giving up until the next scheduled run.
 SCAN_TIMEOUT_S = 15.0
 CONNECT_TIMEOUT_S = 20.0
-SYNC_TIMEOUT_S = 120.0
+SYNC_TIMEOUT_S = 180.0
 MIN_SECONDS_BETWEEN_SYNCS = 1800  # guard against a misbehaving trigger draining the ring
+
+# How many past UTC days to request on each sync, today included. Re-pulling a day
+# already stored is free — ingest is idempotent — so this is cheap insurance against
+# gaps from a missed sync or an unreachable ring, not a retention policy.
+SYNC_DAYS_BACK = 3
+
+# Waiting for a multi-frame reply: stop once the stream has been quiet this long, and
+# never wait longer than the cap. The ring declares its frame count in the header, but
+# quiet-detection also terminates correctly on a malformed or truncated burst.
+REPLY_QUIET_S = 1.5
+REPLY_CAP_S = 10.0

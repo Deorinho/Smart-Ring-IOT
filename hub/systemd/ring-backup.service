@@ -1,0 +1,28 @@
+# Nightly backup of the telemetry store, with verification. Bug_Backlog R-004.
+#
+#     cp hub/systemd/ring-backup.* ~/.config/systemd/user/
+#     systemctl --user daemon-reload
+#     systemctl --user enable --now ring-backup.timer
+#     systemctl --user start ring-backup.service    # run one now
+#     journalctl --user -u ring-backup -n 20
+#
+# This unit failing is worth noticing, unlike ring-sync — a missed sync is normal, a
+# failed backup is not. Check it occasionally with:
+#
+#     systemctl --user list-timers ring-backup.timer
+#
+# Backups land beside the store, which protects against corruption and mistakes but not
+# against the disk dying. Pulling them off the hub is still manual; see tools/backup.py.
+
+[Unit]
+Description=RavenX telemetry store backup
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/Projects/RavenXSmartRing-IOT
+ExecStart=%h/Projects/RavenXSmartRing-IOT/.venv/bin/python -m tools.backup
+Environment=PYTHONUNBUFFERED=1
+TimeoutStartSec=300
+
+[Install]
+WantedBy=default.target
