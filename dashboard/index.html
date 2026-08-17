@@ -3,51 +3,85 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0d1117">
+<meta name="theme-color" content="#101120">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="RavenX">
+<meta name="apple-mobile-web-app-title" content="RX-06">
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/icon.svg">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/style.css">
-<title>RavenX</title>
+<title>RX-06</title>
 </head>
 <body>
 
-<header>
-  <h1>RavenX</h1>
-  <span id="freshness" class="freshness">loading…</span>
+<header class="head">
+  <img class="mark" src="/mark.png" alt="RavenX Instruments">
+  <span class="wordmark">RX-06</span>
+  <span class="batt num" id="batt">
+    <span class="batt-shell"><span class="batt-fill" id="batt-fill" style="width:0"></span></span>
+    <span id="batt-pct">—</span>
+  </span>
 </header>
 
-<main>
-  <section class="tiles" id="tiles"></section>
+<!-- Sync time, run count, clock offset: the three numbers that decide whether
+     anything below them is true. -->
+<div class="status num" id="status">
+  <span class="led"></span>
+  <span id="status-text">connecting to hub…</span>
+</div>
 
-  <section class="card">
-    <div class="card-head">
-      <h2>Heart rate</h2>
-      <div class="range" id="range">
-        <button data-days="1" class="on">24 h</button>
-        <button data-days="7">7 d</button>
-        <button data-days="30">30 d</button>
-      </div>
+<!-- Card order never changes. The screen fills in rather than rearranging, so a
+     glance lands in the same place on day 1 and day 400. -->
+<section class="panel feature" id="sleep-panel">
+  <div class="panel-head">
+    <span class="kicker">Last night</span>
+    <span class="tag-pending">Session 8</span>
+  </div>
+  <div class="awaiting">
+    <div class="title">No sleep data</div>
+    <p>Sleep has no public reference implementation and its opcode is still unmapped.
+       It may ride the second vendor service. Frames already captured sit in
+       <code>raw_payloads</code> and will be re-parsed once it is understood.</p>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <span class="kicker">Resting heart rate</span>
+    <div class="range" id="range">
+      <button data-days="1" aria-pressed="true">24 h</button>
+      <button data-days="7" aria-pressed="false">7 d</button>
+      <button data-days="30" aria-pressed="false">30 d</button>
     </div>
-    <div id="hr-chart" class="chart"></div>
-  </section>
+  </div>
+  <div class="big">
+    <span class="value num" id="hr-value">—</span>
+    <span class="unit">bpm</span>
+    <span class="aside" id="hr-aside"></span>
+  </div>
+  <div id="hr-spark"></div>
+  <div class="foot num">
+    <span id="hr-foot-left"></span>
+    <span id="hr-foot-right"></span>
+  </div>
+</section>
 
-  <section class="card">
-    <h2>By day</h2>
-    <div id="day-chart" class="chart"></div>
-  </section>
+<section class="panel">
+  <div class="panel-head">
+    <span class="kicker">Today</span>
+    <span class="tag-pending">Session 9</span>
+  </div>
+  <div class="awaiting">
+    <div class="title">Steps not parsed yet</div>
+    <p>Accelerometer frames are archived in <code>raw_payloads</code> and will be
+       re-parsed. Nothing is lost by the parser not existing today.</p>
+  </div>
+</section>
 
-  <section class="card">
-    <h2>Sync</h2>
-    <div id="syncs" class="syncs"></div>
-  </section>
-</main>
-
-<footer>
-  <span id="footnote"></span>
+<footer class="source num">
+  <span id="ring-name">—</span>
+  <span id="ring-addr"></span>
 </footer>
 
 <script src="/app.js"></script>

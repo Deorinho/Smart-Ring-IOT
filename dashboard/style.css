@@ -1,135 +1,308 @@
-/* RavenX dashboard — dark, glanceable, phone-first.
-   No framework and no build step: this is the entire stylesheet. */
+/* RavenX Instruments — RX-06 dashboard.
+ *
+ * Built on the Nocturne design system's tokens (project d5af71cd), with the
+ * RX-06 Dashboard design's instrument palette layered on top: signal green for
+ * live and in-tolerance, shop orange for attention and not-yet, blurple for the
+ * data itself.
+ *
+ * Nocturne's stylesheet opens with an @import of Inter from Google Fonts. That is
+ * deliberately NOT reproduced here: an external request would break offline use and
+ * put a third party in the request path of a project whose entire premise is not
+ * having one. "Inter", system-ui falls back to SF on iOS, which is Inter's cousin.
+ */
 
 :root {
-  --bg: #0d1117;
-  --panel: #161b22;
-  --line: #21262d;
-  --text: #e6edf3;
-  --dim: #8b949e;
-  --hr: #f7776d;
-  --ok: #3fb950;
-  --warn: #d29922;
-  --bad: #f85149;
-  --radius: 14px;
+  /* — Nocturne tokens — */
+  --color-bg: #161826;
+  --color-surface: #232532;
+  --color-text: #e9e9ed;
+  --color-accent: #9184d9;
+
+  --color-neutral-300: #cfd3e5;
+  --color-neutral-400: #b2b6ca;
+  --color-neutral-500: #9397ab;
+  --color-neutral-600: #75798c;
+  --color-neutral-700: #595d6c;
+  --color-neutral-800: #3f424d;
+
+  --font-heading: "Inter", system-ui, -apple-system, sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, sans-serif;
+  --font-heading-weight: 500;
+
+  --space-2: 5.6px;
+  --space-3: 8.4px;
+  --space-4: 11.2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+
+  /* — RX-06 instrument palette — */
+  --screen: #101120;      /* the device ground, one step below --color-bg */
+  --panel: #1a1b2b;       /* card fill */
+  --panel-edge: rgba(233, 233, 237, 0.07);
+  --sig: #b8f24a;         /* signal green — live, in tolerance, current */
+  --shop: #ff7d2b;        /* shop orange — attention, not yet */
+  --violet-mid: #6d61ad;
+  --violet-dim: #3e3f57;
 }
 
 * { box-sizing: border-box; }
 
-html, body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  -webkit-font-smoothing: antialiased;
+html {
+  background: var(--screen);
+  /* Filling the overscroll area matters on iOS: a rubber-band bounce past the top
+     of an installed PWA otherwise exposes white. */
 }
 
-header {
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--screen);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  padding: max(18px, env(safe-area-inset-top)) 18px
+           max(28px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+::selection { background: color-mix(in srgb, var(--color-accent) 30%, transparent); }
+
+.num { font-variant-numeric: tabular-nums; }
+
+/* — header — */
+.head { display: flex; align-items: center; gap: 10px; }
+
+/* The RavenX mark. Height auto — the source asset is 645x564, so a fixed square
+   squashes it.
+   30px, matching the design's desktop nav rather than its 20px device header: the
+   raven is hairline line art, and below ~28px the strokes fall under a pixel and it
+   reads as a grey smudge instead of a bird. */
+.mark { width: 30px; height: auto; flex: none; display: block; }
+
+.wordmark {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 14px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.batt {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--color-neutral-300);
+}
+
+.batt-shell {
+  display: inline-block;
+  width: 22px;
+  height: 11px;
+  border-radius: 2px;
+  border: 1px solid var(--color-neutral-600);
+  padding: 1.5px;
+}
+
+.batt-fill {
+  display: block;
+  height: 100%;
+  background: var(--sig);
+  border-radius: 1px;
+  transition: width 0.4s ease;
+}
+
+.batt-fill.low { background: var(--shop); }
+
+/* — status line —
+   Sync time, run count, clock offset: the three numbers that decide whether
+   anything below them is true. Everything else stays in the hub. */
+.status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  border-radius: 6px;
+  background: rgba(184, 242, 74, 0.07);
+  border: 1px solid rgba(184, 242, 74, 0.18);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--color-neutral-300);
+}
+
+.status .led {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--sig);
+  box-shadow: 0 0 8px var(--sig);
+  flex: none;
+}
+
+.status.stale {
+  background: rgba(255, 125, 43, 0.07);
+  border-color: rgba(255, 125, 43, 0.28);
+}
+
+.status.stale .led { background: var(--shop); box-shadow: 0 0 8px var(--shop); }
+
+.status.dead {
+  background: rgba(233, 233, 237, 0.04);
+  border-color: var(--panel-edge);
+  color: var(--color-neutral-500);
+}
+
+.status.dead .led { background: var(--color-neutral-600); box-shadow: none; }
+
+/* — cards — */
+.panel {
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  padding: 18px;
+}
+
+/* The night panel is the one lifted surface: a gradient ground and an accent-tinted
+   edge. Only one card gets this, or elevation stops meaning anything. */
+.panel.feature {
+  background: linear-gradient(160deg, #221f38, var(--panel));
+  border-color: rgba(145, 132, 217, 0.22);
+}
+
+.panel-head { display: flex; align-items: center; gap: 10px; }
+
+.kicker {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-neutral-500);
+}
+
+.tag-pending {
+  margin-left: auto;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--shop);
+  border: 1px solid rgba(255, 125, 43, 0.35);
+  border-radius: 3px;
+  padding: 2px 6px;
+}
+
+.panel-note {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--color-neutral-500);
+}
+
+.big {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  padding: max(18px, env(safe-area-inset-top)) 18px 10px;
+  gap: 8px;
+  margin-top: 12px;
 }
 
-h1 {
-  margin: 0;
-  font-size: 20px;
-  letter-spacing: 0.04em;
-  font-weight: 650;
+.big .value {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 46px;
+  line-height: 1;
 }
 
-h2 {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--dim);
-}
+.big .unit { font-size: 14px; color: var(--color-neutral-400); }
 
-.freshness { font-size: 12px; color: var(--dim); }
-.freshness.stale { color: var(--warn); }
-.freshness.dead { color: var(--bad); }
-
-main { padding: 0 18px 24px; display: grid; gap: 14px; }
-
-.tiles {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 10px;
-}
-
-.tile {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 12px 14px;
-}
-
-.tile .label {
+.big .aside {
+  margin-left: auto;
   font-size: 11px;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--dim);
+  color: var(--sig);
 }
 
-.tile .value {
-  font-size: 27px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  margin-top: 3px;
-}
-
-.tile .unit { font-size: 13px; color: var(--dim); margin-left: 3px; font-weight: 400; }
-.tile .sub { font-size: 11px; color: var(--dim); margin-top: 2px; }
-
-.card {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 14px;
-  display: grid;
+.foot {
+  display: flex;
+  justify-content: space-between;
   gap: 10px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--color-neutral-500);
 }
 
-.card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.spark { width: 100%; height: 56px; margin-top: 16px; display: block; }
 
-.range { display: flex; gap: 4px; }
+/* — empty states —
+   An awaiting card names the session that fills it. The dashboard reads as a build
+   log you happen to wear, and a dashed edge says "not yet" rather than "broken". */
+.awaiting {
+  margin-top: 16px;
+  border: 1px dashed rgba(233, 233, 237, 0.16);
+  border-radius: var(--radius-md);
+  padding: 22px 16px;
+  text-align: center;
+}
+
+.awaiting .title {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 20px;
+  color: var(--color-neutral-400);
+}
+
+.awaiting p {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-neutral-500);
+  text-wrap: pretty;
+}
+
+.awaiting code {
+  font-family: inherit;
+  color: var(--color-neutral-400);
+}
+
+/* — range switch — */
+.range { margin-left: auto; display: flex; gap: 4px; }
 
 .range button {
   background: transparent;
-  border: 1px solid var(--line);
-  color: var(--dim);
+  border: 1px solid var(--panel-edge);
+  color: var(--color-neutral-500);
   font: inherit;
-  font-size: 12px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
   padding: 3px 9px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
 }
 
-.range button.on { background: var(--line); color: var(--text); }
+.range button:hover {
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  color: var(--color-neutral-300);
+}
 
-.chart { width: 100%; overflow-x: auto; }
-.chart svg { display: block; width: 100%; height: auto; }
+.range button[aria-pressed="true"] {
+  color: var(--color-accent);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+  border-color: transparent;
+}
 
-.empty { color: var(--dim); font-size: 13px; padding: 18px 0; text-align: center; }
-
-.syncs { display: grid; gap: 6px; font-size: 12px; }
-
-.sync-row {
+/* — footer — */
+.source {
+  margin-top: auto;
+  padding-top: 14px;
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  color: var(--dim);
-  font-variant-numeric: tabular-nums;
-}
-
-.sync-row .dot { color: var(--ok); }
-.sync-row.fail .dot { color: var(--bad); }
-
-footer {
-  padding: 0 18px max(18px, env(safe-area-inset-bottom));
-  font-size: 11px;
-  color: var(--dim);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-neutral-600);
 }

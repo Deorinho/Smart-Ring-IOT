@@ -21,7 +21,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from hub import db
-from hub.config import DB_PATH, MANAGED_RINGS, REPO_ROOT
+from hub.config import DB_PATH, MANAGED_RINGS, REPO_ROOT, SYNC_HOURS_LOCAL
 
 DASHBOARD_DIR = REPO_ROOT / "dashboard"
 
@@ -49,18 +49,36 @@ def health() -> dict:
 
     `last_sample_utc` is the field that matters: a store that is up but hasn't received
     a reading in two days looks identical to a healthy one from any other angle.
+
+    `runs_today` backs the dashboard's single status line. Three scheduled syncs a day
+    means "2/3" is a legible statement about whether the machinery is keeping up —
+    more useful at a glance than a raw timestamp, and cheap to compute.
     """
     conn = _conn()
     try:
         latest = db.latest_sample(conn, "heart_rate")
         runs = db.recent_sync_runs(conn, limit=1)
         total = conn.execute("SELECT COUNT(*) AS c FROM samples").fetchone()["c"]
+
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        counted = conn.execute(
+            "SELECT status, COUNT(*) AS c FROM sync_runs"
+            " WHERE started_utc LIKE ? GROUP BY status",
+            (f"{today}%",),
+        ).fetchall()
+        by_status = {r["status"]: r["c"] for r in counted}
+
         return {
             "ok": True,
             "samples": total,
             "last_sample_utc": latest["ts_utc"] if latest else None,
             "last_sync": dict(runs[0]) if runs else None,
-            "rings": [r.name for r in MANAGED_RINGS],
+            "runs_today": {
+                "ok": by_status.get("ok", 0),
+                "total": sum(by_status.values()),
+                "expected": len(SYNC_HOURS_LOCAL),
+            },
+            "rings": [{"name": r.name, "address": r.address} for r in MANAGED_RINGS],
         }
     finally:
         conn.close()
