@@ -284,13 +284,57 @@ sudo dpkg-reconfigure -plow unattended-upgrades
 - Thermals: the 2014 Air throttles gracefully; keep the vent (rear hinge) unobstructed.
 - Battery: decade-old cell + permanent A/C is fine; it degrades to a small UPS, which
   is exactly what you want.
-- Backups: the SQLite file is the crown jewel. A nightly cron copying it to the
-  desktop PC (or anywhere) is two lines:
 
-  ```bash
-  crontab -e
-  # 0 4 * * * cp ~/Projects/RavenXSmartRing-data/ring.db ~/Projects/RavenXSmartRing-data/backups/ring-$(date +\%F).db
-  ```
+## 7a. Backups, and the restore drill that makes them real
+
+**Do not use `cp`.** The store runs in WAL mode, so a file copy taken while the sync
+service is mid-write can capture a database whose `-wal` sidecar it no longer matches —
+a copy that restores corrupt, which is worse than no copy because you believe in it.
+`tools/backup.py` uses SQLite's own backup API, which copies pages under a read lock and
+cannot be torn by a concurrent writer. It runs nightly at 04:00 under
+`ring-backup.timer`.
+
+```bash
+systemctl --user list-timers ring-backup      # confirm it is actually scheduled
+python -m tools.backup                        # write, verify, rotate
+python -m tools.backup --verify-only          # re-check every existing backup
+```
+
+**Verifying a backup is not restoring it.** `backup.py` checks the file it just wrote,
+in the process that wrote it. That answers "did the write succeed?" and never "could I
+get my data back?" `tools/restore.py` answers the second question — it copies a backup to
+a scratch directory, verifies it, then reads it back through `hub/db.py`'s own query
+functions, the same ones `hub/api.py` calls:
+
+```bash
+python -m tools.restore --list
+python -m tools.restore --latest
+```
+
+It refuses to write anywhere near the live store, so it cannot destroy the thing it is
+testing. Exit status is 0 only if the copy verified *and* served the read path, which
+makes it safe to schedule later. A store with a valid schema and zero rows is reported
+as a **failure**, not a success — that case passes `integrity_check` cleanly and is the
+one a checksum cannot catch.
+
+Finish the drill by looking at the data with your own eyes. `restore.py` prints this
+line with the real path filled in:
+
+```bash
+RAVENX_DATA_DIR=/tmp/ravenx-restore-<stamp> .venv/bin/uvicorn hub.api:app --port 8001
+```
+
+Open `http://<hub>:8001`, confirm the heart-rate panel draws, then stop it. Two things
+to check: it is port **8001**, so the live dashboard on 8000 is untouched, and
+`RAVENX_DATA_DIR` points at the restore directory, so nothing writes to the real store.
+
+**Still your job: getting a copy off the hub.** Everything above lives on the same disk
+as the original, which covers corruption and mistakes but not that disk dying. From the
+desktop:
+
+```bash
+rsync -av warlock@10.0.0.213:~/Projects/RavenXSmartRing-data/backups/ ./backups/
+```
 
 ## 8. Verification checklist
 

@@ -59,3 +59,24 @@ bundle, for one sparkline that is twenty lines of hand-written SVG.
   nothing.
 - Installing to the iPhone home screen needs HTTPS for the service worker — see
   `HUB_SETUP.md` §5 for Tailscale Serve. Until then it is a LAN page.
+
+## The service worker
+
+`sw.js` exists so this is an installed app rather than a bookmark that hides Safari's
+chrome, and because it is the prerequisite for push — the still-open half of R-009, the
+ring having once run 80% → 1% unnoticed.
+
+Its caching policy is asymmetric on purpose:
+
+| Request | Policy | Why |
+| --- | --- | --- |
+| shell (html/css/js/icons) | stale-while-revalidate | Static, no build step. Cache-first without revalidation would mean bumping a version string by hand after every edit — a chore that gets skipped and then debugged for an hour. |
+| `/api/*` | **network only, never cached** | A cached reading replayed as current would break the one promise this design makes. Offline, the fetch fails and the status line says "Hub unreachable", which is an honest thing for a screen to say. |
+
+**It requires a secure context and has never been observed registering.** Over plain
+http on the LAN, registration rejects and the dashboard carries on working exactly as
+before — the failure is logged via `console.info` rather than swallowed, so "is it
+actually installed?" stays answerable from the phone. Verify on iOS once Tailscale
+Serve is up; that is the only environment where the answer counts.
+
+Bump `CACHE` in `sw.js` if a shell file ever needs to be force-evicted.
