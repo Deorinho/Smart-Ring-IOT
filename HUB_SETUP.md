@@ -289,6 +289,49 @@ journalctl --user -u ring-dashboard -f    # live logs
 
 The BLE sync service gets an identical unit later (`ring-sync.service`).
 
+### None of the above survives a reboot on THIS machine
+
+**`/home/warlock` is eCryptfs-encrypted and only decrypts on interactive login.**
+
+```text
+/home/.ecryptfs/warlock/.Private on /home/warlock type ecryptfs
+```
+
+At boot the systemd user manager starts exactly as `enable-linger` promises, reads an
+empty `~/.config/systemd/user/`, finds no units, and reports `Startup finished in 471ms`
+having started nothing. Log in over SSH and the home decrypts, so every by-hand check
+afterwards works perfectly — which is precisely what makes this hard to catch.
+
+**`loginctl enable-linger` does not fix it and is already enabled.** Nor do plain system
+units in `/etc/systemd/system/`: `WorkingDirectory` and `.venv/bin/uvicorn` are
+themselves inside the encrypted home, so a root-run service fails for the same reason.
+
+Symptoms, for recognition later:
+
+| Observation | Meaning |
+| --- | --- |
+| Phone gets **502** from the tailnet URL | Serve is alive; the thing it proxies to is dead. A **timeout** would mean the network instead |
+| `systemctl --user list-timers` shows no ring timers | Nothing was ever started |
+| `status` says `loaded; enabled` but `list-units --all` omits the unit | `status` re-read the file *after* your login decrypted the home. It was invisible at boot |
+| `systemctl --user show <unit> -p WantedBy` is **empty** | The graph was built at boot from an encrypted directory |
+
+Two consequences worth stating plainly. `ring-sync.service`'s `After=bluetooth.target`
+was always inert — that is a *system* target and a user manager cannot order against it,
+so the R-005 mitigation written in session 1 never applied. And **rebooting is part of
+testing any unattended claim.** "It ran for a day without me" and "it survives a restart"
+are different statements, and only the second one is what a 24/7 hub needs.
+
+The fix is to move the repo, venv and data to `/srv/ravenx` and convert all four units
+to system units with `User=warlock` — `PLAN.md` §6 session 8, tracked as Bug_Backlog
+R-018. This section gets rewritten then; until it does, treat everything above it as
+describing a layout that works only while someone is logged in.
+
+**Interim, after any reboot**, until that migration lands:
+
+```bash
+systemctl --user start ring-dashboard ring-sync.timer ring-backup.timer
+```
+
 ## 6a. The firewall will silently eat your first service
 
 Mint ships `ufw` **active**, defaulting to deny-incoming, and installing
