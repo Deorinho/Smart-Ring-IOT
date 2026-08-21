@@ -164,11 +164,22 @@ async def apply_sensing_policy(client: BleakClient, collector: FrameCollector) -
 async def pull_battery(
     client: BleakClient, collector: FrameCollector, now: datetime
 ) -> list[Sample]:
-    """Read the battery and turn it into a stored sample.
+    """Read the battery and turn it into stored samples.
 
     Recording this is what eventually replaces the vendor app's low-battery warning
     (Bug_Backlog R-009): a percentage nobody writes down cannot be alerted on, and the
     ring has already run itself flat unnoticed once.
+
+    Returns two samples sharing one timestamp: the percentage, and the charging flag as
+    `battery_charging` (1 or 0). The shared `ts_utc` is load-bearing rather than
+    incidental -- the dashboard only believes the charging state when its timestamp
+    matches the percentage's, because nothing polls the ring and both readings are only
+    ever as fresh as the sync that produced them. Writing them at different instants
+    would let a charging flag from one sync be rendered beside a percentage from another.
+
+    The flag rides the generic scalar table as a 0/1 rather than getting a column of its
+    own: `samples` is keyed by (source, metric, ts_utc) precisely so a new scalar costs
+    nothing, and a boolean is a scalar.
     """
     reply = await exchange(client, collector, request_battery())
     if not reply:
@@ -177,7 +188,11 @@ async def pull_battery(
 
     percent, charging = parse_battery(reply[0])
     log.info("battery %d%% (%s)", percent, "charging" if charging else "on battery")
-    return [Sample("battery", db.to_iso_utc(now), float(percent))]
+    ts = db.to_iso_utc(now)
+    return [
+        Sample("battery", ts, float(percent)),
+        Sample("battery_charging", ts, 1.0 if charging else 0.0),
+    ]
 
 
 async def pull_heart_rate(

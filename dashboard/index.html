@@ -19,16 +19,52 @@
   <img class="mark" src="/mark.png" alt="RavenX Instruments">
   <span class="wordmark">RX-06</span>
   <span class="batt num" id="batt">
-    <span class="batt-shell"><span class="batt-fill" id="batt-fill" style="width:0"></span></span>
+    <span class="batt-shell">
+      <span class="batt-fill" id="batt-fill" style="width:0"></span>
+      <!-- Only shown while charging. Inside the shell so it reads as one instrument
+           rather than an icon that happens to sit nearby. -->
+      <svg class="batt-bolt" id="batt-bolt" viewBox="0 0 8 12" aria-hidden="true">
+        <path d="M4.6 0 0.6 6.6h2.6L3.4 12 7.4 5.2H4.8L4.6 0Z"/>
+      </svg>
+    </span>
     <span id="batt-pct">—</span>
   </span>
 </header>
 
 <!-- Sync time, run count, clock offset: the three numbers that decide whether
      anything below them is true. -->
-<div class="status num" id="status">
-  <span class="led"></span>
-  <span id="status-text">connecting to hub…</span>
+<div class="statusbar">
+  <div class="status num" id="status">
+    <span class="led"></span>
+    <span id="status-text">connecting to hub…</span>
+  </div>
+  <button class="sync-btn" id="sync-btn" type="button" title="Sync the ring now">
+    <svg class="sync-ico" viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M13.6 6.4A5.7 5.7 0 0 0 3.2 5.1M2.4 9.6a5.7 5.7 0 0 0 10.4 1.3"
+            fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      <path d="M13.9 2.6v3.9h-3.9M2.1 13.4V9.5H6" fill="none" stroke="currentColor"
+            stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span id="sync-label">Sync</span>
+  </button>
+</div>
+
+<!-- Confirm step exists because a sync needs the ring within BLE range of the hub, and
+     the phone is the one device that tells you nothing about where either of them is. -->
+<div class="sheet-wrap" id="sync-sheet" hidden>
+  <div class="sheet-scrim" id="sync-cancel-bg"></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <div class="sheet-title" id="sheet-title">Stand near the hub</div>
+    <p class="sheet-body">
+      The ring talks to the hub over Bluetooth, not through this phone. Be in the same
+      room before syncing — body-worn, the signal loses about 21 dB, so another room may
+      not be close enough.
+    </p>
+    <div class="sheet-actions">
+      <button class="sheet-btn ghost" id="sync-cancel" type="button">Cancel</button>
+      <button class="sheet-btn go" id="sync-go" type="button">Sync now</button>
+    </div>
+  </div>
 </div>
 
 <!-- Card order never changes. The screen fills in rather than rearranging, so a
@@ -60,7 +96,12 @@
     <span class="unit">bpm</span>
     <span class="aside" id="hr-aside"></span>
   </div>
-  <div id="hr-spark"></div>
+  <div id="hr-spark" class="spark-wrap"></div>
+  <div class="scrub-readout num" id="scrub" hidden>
+    <span class="scrub-bpm" id="scrub-bpm">—</span>
+    <span class="scrub-unit">bpm</span>
+    <span class="scrub-time" id="scrub-time"></span>
+  </div>
   <div class="foot num">
     <span id="hr-foot-left"></span>
     <span id="hr-foot-right"></span>

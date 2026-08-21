@@ -289,6 +289,49 @@ journalctl --user -u ring-dashboard -f    # live logs
 
 The BLE sync service gets an identical unit later (`ring-sync.service`).
 
+### None of the above survives a reboot on THIS machine
+
+**`/home/warlock` is eCryptfs-encrypted and only decrypts on interactive login.**
+
+```text
+/home/.ecryptfs/warlock/.Private on /home/warlock type ecryptfs
+```
+
+At boot the systemd user manager starts exactly as `enable-linger` promises, reads an
+empty `~/.config/systemd/user/`, finds no units, and reports `Startup finished in 471ms`
+having started nothing. Log in over SSH and the home decrypts, so every by-hand check
+afterwards works perfectly — which is precisely what makes this hard to catch.
+
+**`loginctl enable-linger` does not fix it and is already enabled.** Nor do plain system
+units in `/etc/systemd/system/`: `WorkingDirectory` and `.venv/bin/uvicorn` are
+themselves inside the encrypted home, so a root-run service fails for the same reason.
+
+Symptoms, for recognition later:
+
+| Observation | Meaning |
+| --- | --- |
+| Phone gets **502** from the tailnet URL | Serve is alive; the thing it proxies to is dead. A **timeout** would mean the network instead |
+| `systemctl --user list-timers` shows no ring timers | Nothing was ever started |
+| `status` says `loaded; enabled` but `list-units --all` omits the unit | `status` re-read the file *after* your login decrypted the home. It was invisible at boot |
+| `systemctl --user show <unit> -p WantedBy` is **empty** | The graph was built at boot from an encrypted directory |
+
+Two consequences worth stating plainly. `ring-sync.service`'s `After=bluetooth.target`
+was always inert — that is a *system* target and a user manager cannot order against it,
+so the R-005 mitigation written in session 1 never applied. And **rebooting is part of
+testing any unattended claim.** "It ran for a day without me" and "it survives a restart"
+are different statements, and only the second one is what a 24/7 hub needs.
+
+The fix is to move the repo, venv and data to `/srv/ravenx` and convert all four units
+to system units with `User=warlock` — `PLAN.md` §6 session 8, tracked as Bug_Backlog
+R-018. This section gets rewritten then; until it does, treat everything above it as
+describing a layout that works only while someone is logged in.
+
+**Interim, after any reboot**, until that migration lands:
+
+```bash
+systemctl --user start ring-dashboard ring-sync.timer ring-backup.timer
+```
+
 ## 6a. The firewall will silently eat your first service
 
 Mint ships `ufw` **active**, defaulting to deny-incoming, and installing
@@ -398,6 +441,136 @@ desktop:
 rsync -av warlock@10.0.0.213:~/Projects/RavenXSmartRing-data/backups/ ./backups/
 ```
 
+## 7b. Hardening pass
+
+Threat model first — hardening without one is ritual.
+
+**In scope:** anything else on the house WiFi, including guests and whatever firmware
+runs on the IoT devices; automated scanning if a port is ever exposed by accident; a
+stolen or compromised Tailscale credential; the laptop being taken while powered off; a
+broken or malicious package update.
+
+**Out of scope, deliberately:** a targeted attacker with physical access to a running
+machine, or anyone who can compel the account. A 2014 MacBook Air in a house does not win
+that fight, and pretending otherwise buys complexity instead of safety.
+
+### Already correct — do not undo these
+
+| Property | Why it matters |
+| --- | --- |
+| `ufw` default-deny incoming, port 22 the only allow rule | Every other service is invisible from the LAN |
+| Dashboard reachable only over the tailnet (§5) | No LAN port, nothing public |
+| `hub/api.py` has **no write path at all** | A bug or compromise in the reader cannot corrupt the store |
+| Funnel off — `serve status` reports `(tailnet only)` | Nothing published to the internet |
+| No routing role — see "deliberate non-roles" below | The box does one job |
+
+### SSH — read this before changing anything
+
+Disabling password authentication is the obvious hardening step and **on this machine it
+can lock you out of a headless box.** `~/.ssh/authorized_keys` lives inside the
+eCryptfs-encrypted home (R-018). Before you log in, that directory does not exist, so
+`sshd` cannot read your key — which means password auth is currently what gets you in
+after a reboot, whether or not you realised it.
+
+Check what you actually have:
+
+```bash
+sudo sshd -T | grep -E "^(passwordauthentication|permitrootlogin|pubkeyauthentication|authorizedkeysfile)"
+```
+
+**The safe order is: move the keys out of the encrypted home first, prove it works, then
+turn passwords off.** Never the reverse.
+
+```bash
+sudo mkdir -p /etc/ssh/authorized_keys
+sudo cp ~/.ssh/authorized_keys /etc/ssh/authorized_keys/warlock
+sudo chown root:root /etc/ssh/authorized_keys/warlock
+sudo chmod 644 /etc/ssh/authorized_keys/warlock
+```
+
+```bash
+sudo tee /etc/ssh/sshd_config.d/99-ravenx.conf >/dev/null <<'EOF'
+AuthorizedKeysFile /etc/ssh/authorized_keys/%u .ssh/authorized_keys
+PermitRootLogin no
+EOF
+sudo sshd -t && sudo systemctl reload ssh
+```
+
+Now **reboot and log in without touching the machine.** If a key-based login succeeds
+while the home is still encrypted, the keys are genuinely outside it. Only then add
+`PasswordAuthentication no` and `KbdInteractiveAuthentication no` to that same file and
+reload again.
+
+`sshd -t` validates syntax, not that your key works. **Keep a second SSH session open for
+every step here**, and test from a third before closing either.
+
+### Automatic security updates — verify, don't assume
+
+§7 recommends `unattended-upgrades`. Installed is not the same as running:
+
+```bash
+systemctl is-active unattended-upgrades && apt-config dump APT::Periodic::Unattended-Upgrade
+```
+
+A `1` means daily. A `0`, or a missing key, means it was installed and never enabled —
+which is the same class of mistake as a backup nobody has restored.
+
+### Tailscale ACLs
+
+By default every device on a tailnet reaches every other device on every port. With two
+nodes that both belong to you, that is acceptable and not worth the complexity.
+
+**It stops being acceptable when Architecture B arrives.** The ESP32-C3 satellite is an
+embedded device running firmware you wrote, sitting in another building, and it needs
+exactly one thing: POST to `/ingest`. It should never be able to reach SSH. Write the ACL
+when the node is added, not after:
+
+```jsonc
+// Tailscale admin console -> Access Controls
+{
+  "acls": [
+    { "action": "accept", "src": ["tag:satellite"], "dst": ["tag:hub:8000"] },
+    { "action": "accept", "src": ["autogroup:member"], "dst": ["*:*"] }
+  ]
+}
+```
+
+A satellite is the most likely thing on this tailnet to be compromised — it is physically
+remote, unattended, and running the least-reviewed code in the project.
+
+### At-rest encryption: a regression you are choosing
+
+The `/srv/ravenx` migration (R-018, session 8) moves `ring.db` **out of the encrypted
+home**. That is a deliberate trade and it should be recorded as one rather than
+discovered later.
+
+What is actually lost is narrow: eCryptfs protects data when the machine is **off**. This
+hub is powered on essentially always, and while it runs, the home is decrypted whenever
+anyone is logged in — so the protection covered "laptop stolen while shut down" and
+little else. What is gained is a system that survives reboots at all.
+
+Full-disk encryption does not rescue this either: unattended boot needs the key available
+without a human, and a key the machine can read by itself is a key an attacker with the
+disk can read too. The honest position is that **this box trades at-rest encryption for
+unattended operation**, and its real protection is physical — it lives in your home.
+
+If that ever stops being acceptable, the answer is not LUKS-with-a-keyfile; it is keeping
+the sensitive store on hardware that is not expected to boot unattended.
+
+### Deliberate non-roles
+
+Recorded so a future session does not "helpfully" add them back:
+
+- **No IP forwarding, no exit node.** Considered 2026-08-20 to work around iOS allowing
+  only one VPN (R-019) and **rejected**. It enables routing kernel-wide on a machine whose
+  job is storing data, couples a phone's general browsing to the box holding health data,
+  makes the Tailscale account a more valuable target, and puts sustained traffic on the
+  same radio the ring sync depends on (R-003). Back out with
+  `sudo tailscale up --advertise-exit-node=false`.
+- **No Funnel.** Serve only. The privacy claim is the project.
+- **No inbound LAN ports.** The SSH tunnel in §2a covers every "I just need to look at
+  it" case without one.
+
 ## 8. Verification checklist
 
 - [ ] Lid closed 10 minutes → still answers ping and SSH
@@ -406,7 +579,17 @@ rsync -av warlock@10.0.0.213:~/Projects/RavenXSmartRing-data/backups/ ./backups/
 - [ ] Python venv imports bleak + fastapi
 - [ ] Tailscale: iPhone reaches the hub with WiFi off (cellular) — this is also
       the privacy-segment demo shot for the video
-- [ ] Dummy systemd user service starts on boot with linger enabled
+- [ ] **Services survive a reboot with nobody logging in** — the phone loads the
+      dashboard after `sudo reboot` and no SSH session. This is the item that matters;
+      "it ran unattended for a day" is a different and much weaker claim (R-018)
+- [ ] `sudo sshd -T` shows pubkey auth on, root login off — and passwords off **only
+      after** a cold-boot key login is proven to work (§7b: the keys must be outside the
+      encrypted home first, or you lock yourself out of a headless machine)
+- [ ] `unattended-upgrades` is *active*, not merely installed
+- [ ] `tailscale serve status` reports `(tailnet only)`; Funnel off
+- [ ] No IP forwarding, no exit node — a deliberate non-role (§7b)
+- [ ] `tailscale status` shows the phone *online* before diagnosing any "dashboard is
+      down" report (R-019 — the hub was healthy for two days while it looked broken)
 
 ## Beyond RavenX Smart Ring
 

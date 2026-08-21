@@ -40,6 +40,9 @@ INSERT OR IGNORE INTO metrics (name, unit, description) VALUES
     ('skin_temp',   'celsius', 'Skin temperature at the finger'),
     ('steps',       'count',   'Steps accumulated in the reporting interval'),
     ('battery',     'percent', 'Ring battery level at sync time'),
+    ('battery_charging', 'bool', '1 while the ring sits on the charger, 0 on the finger.
+                                  Sampled only at sync time, so it is a snapshot of that
+                                  moment and not a record of when charging started'),
     ('hrv',         'ms',      'Heart rate variability, ring-reported daily average'),
     ('stress',      'index',   'Ring-reported stress index, vendor scale');
 

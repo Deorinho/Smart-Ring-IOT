@@ -931,3 +931,85 @@ loads.**
 - Sleep (R-008) and the idle-drain sensing flags (R-014) remain the two big unknowns.
   Sleep is next.
 - Buffer ceiling still unmeasured; re-check around 2026-08-29.
+
+### Postscript, same night: the reboot that undid the headline
+
+The PR was merged. The notebook entry above was written. Then, as the last item on the
+list, the hub was rebooted to close R-017 — and the phone said:
+
+```text
+Hub unreachable · 502
+```
+
+**502, not a timeout.** That distinction did most of the work. A timeout would have meant
+the tailnet path had broken and R-017 was real. 502 means Tailscale Serve was alive,
+tried to proxy to `127.0.0.1:8000`, and found nothing there. The network was fine.
+*Everything behind it was gone.* `systemctl --user list-timers | grep ring` returned
+nothing at all.
+
+So R-017 passed — Tailscale and Mullvad came back concurrently with no help, which was
+the thing budgeted as risky. Something else had been broken the whole time.
+
+**Linger was not the cause.** `Linger=yes`, checked first because `HUB_SETUP.md` calls it
+"the step people miss." Then a genuinely confusing pair of readings:
+
+```text
+systemctl --user list-units --all | grep ring   -> nothing (only gnome-KEYRING)
+systemctl --user status ring-dashboard          -> loaded; enabled; inactive (dead)
+```
+
+A unit cannot be both absent from the loaded set and loaded. That contradiction was the
+whole answer and I read past it once — `status` had loaded the file *on demand*, which
+means nothing had loaded it at boot. Then `systemctl --user show` gave it away:
+
+```text
+WantedBy=
+```
+
+Empty. Enabled, with nothing wanting it. And two lines into the boot journal:
+
+```text
+systemd[1239]: Signature not found in user keyring
+systemd[1239]: Perhaps try the interactive 'ecryptfs-mount-private'
+```
+
+```text
+/home/.ecryptfs/warlock/.Private on /home/warlock type ecryptfs
+```
+
+**The entire home directory is encrypted and only decrypts on interactive login.** At
+boot the user manager starts exactly as linger promises, reads an empty
+`~/.config/systemd/user/`, finds nothing, and reports `Startup finished in 471ms` having
+started zero services. Logging in over SSH decrypts the home, which is why every
+by-hand check all evening worked perfectly and why `status` could suddenly read a file
+that had been invisible an hour earlier. `wireplumber` failing with `Permission denied`
+on `/home/warlock/.local/state` in the same boot log says the same thing from another
+angle.
+
+**This has been true since session 6.** Every claim about the pipeline running itself was
+correct only for as long as the machine stayed up. It ran unattended for a day and would
+have kept doing so indefinitely — the bug needed a reboot to become visible, and nothing
+had rebooted.
+
+It also swallowed R-005 whole. `ring-sync.service` carries `After=bluetooth.target`, but
+that is a *system* target and a user manager cannot order against it, so the line was
+inert from the day it was written. The risk logged in session 1 was never being mitigated
+and could not have been tested, because the unit never started at boot to begin with.
+
+`enable-linger` cannot fix any of this, and neither can moving to plain system units —
+`WorkingDirectory` and `.venv/bin/uvicorn` are themselves inside the encrypted home, so a
+root-run service fails identically. The fix is to move the project out of `/home`
+entirely, to `/srv/ravenx`, which is session 8.
+
+**Two lessons, and the second is the uncomfortable one.** First: *a 502 and a timeout are
+different diagnoses,* and reading which one you got saved an hour of suspecting Mullvad.
+Second: **the exit criterion was wrong.** Session 6 declared the pipeline unattended on
+the evidence of it running unattended — which it did, honestly, for a day. Nothing in
+that test could distinguish "runs without a human" from "runs until the power blinks."
+The verification this project keeps returning to is *verify against the artefact, not the
+intention*, and the artefact here was a machine that had not been restarted since the
+services were installed. **Rebooting is part of the test.** That goes for every unattended
+claim this hub makes from here on.
+
+Stopgap in place: the units were started by hand and run fine while the home is
+decrypted. They will die again on the next reboot.

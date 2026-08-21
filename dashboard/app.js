@@ -94,7 +94,91 @@ function sparkline(el, points) {
 
   el.innerHTML = `<svg class="spark" viewBox="0 0 ${W} ${H}"
     preserveAspectRatio="none" style="overflow:visible"
-    xmlns="http://www.w3.org/2000/svg">${baseline}${series}</svg>`;
+    xmlns="http://www.w3.org/2000/svg">${baseline}${series}
+    <line class="scrub-line" id="scrub-line" x1="0" y1="0" x2="0" y2="${H}" opacity="0"/>
+    <circle class="scrub-dot" id="scrub-dot" r="3.2" cx="0" cy="0" opacity="0"/>
+  </svg>`;
+
+  // Hand the scrub handler the same arrays the chart was drawn from, so the readout
+  // cannot drift from the line. Recomputing them would be a second source of truth.
+  attachScrub(el, points, xs, px, py);
+}
+
+/* --- scrubbing ----------------------------------------------------------
+ *
+ * The chart is drawn in an unscaled viewBox and stretched by CSS, so a pointer's
+ * client x has to be mapped back through the element's rendered width -- not through
+ * the viewBox width, which is a coordinate space and not pixels.
+ *
+ * Nearest-sample rather than interpolated: the ring measures twice an hour, and a
+ * number invented between two real readings would be a fabrication rendered in the
+ * same style as a measurement. */
+function attachScrub(el, points, xs, px, py) {
+  const readout = $("scrub");
+  const line = $("scrub-line");
+  const dot = $("scrub-dot");
+  if (!line || !dot || points.length === 0) return;
+
+  const show = (clientX) => {
+    const box = el.getBoundingClientRect();
+    if (!box.width) return;
+    const ratio = Math.min(Math.max((clientX - box.left) / box.width, 0), 1);
+    const target = ratio * W;
+
+    let best = 0;
+    let bestGap = Infinity;
+    for (let i = 0; i < xs.length; i++) {
+      const gap = Math.abs(px(xs[i]) - target);
+      if (gap < bestGap) {
+        bestGap = gap;
+        best = i;
+      }
+    }
+
+    const point = points[best];
+    const x = px(xs[best]);
+    line.setAttribute("x1", x);
+    line.setAttribute("x2", x);
+    line.setAttribute("opacity", "1");
+    dot.setAttribute("cx", x);
+    dot.setAttribute("cy", py(point.v));
+    dot.setAttribute("opacity", "1");
+
+    $("scrub-bpm").textContent = Math.round(point.v);
+    // Multi-day windows need the date; a bare clock time on a 30 d chart is a lie.
+    const when = new Date(point.t);
+    $("scrub-time").textContent =
+      days === 1
+        ? clock(point.t)
+        : `${when.toLocaleDateString(undefined, { month: "short", day: "numeric" })} ${clock(point.t)}`;
+    readout.hidden = false;
+  };
+
+  const hide = () => {
+    line.setAttribute("opacity", "0");
+    dot.setAttribute("opacity", "0");
+    readout.hidden = true;
+  };
+
+  // Pointer events cover mouse and touch in one path. touch-action: pan-y in the CSS
+  // lets a vertical page scroll through the chart while claiming horizontal drags.
+  el.addEventListener("pointerdown", (e) => {
+    // Capture keeps the readout tracking if the finger slides off the chart mid-drag.
+    // It throws for a pointer id the element does not own, which must not take the
+    // scrub down with it -- the readout is the feature, capture is the polish.
+    try {
+      el.setPointerCapture(e.pointerId);
+    } catch (err) {
+      /* not capturable; scrubbing still works within the element's bounds */
+    }
+    show(e.clientX);
+  });
+  el.addEventListener("pointermove", (e) => {
+    if (e.pressure > 0 || e.buttons || e.pointerType === "mouse") show(e.clientX);
+  });
+  el.addEventListener("pointerup", hide);
+  el.addEventListener("pointercancel", hide);
+  el.addEventListener("pointerleave", hide);
 }
 
 /* --- panels ------------------------------------------------------------- */
@@ -109,9 +193,20 @@ function renderBattery(latest) {
   const pct = Math.round(batt.value);
   $("batt-pct").textContent = `${pct}%`;
   $("batt-fill").style.width = `${Math.max(2, Math.min(100, pct))}%`;
+
+  /* Charging is only ever sampled at sync time -- the ring is not polled -- so this
+   * reading is as old as the last sync. Trust it only if it belongs to the same sync
+   * that produced the percentage; a charging flag from yesterday next to a fresh
+   * battery level would be the dashboard asserting something it does not know. */
+  const flag = latest.battery_charging;
+  const charging = Boolean(flag && flag.value === 1 && flag.ts_utc === batt.ts_utc);
+
+  $("batt").classList.toggle("is-charging", charging);
+  $("batt-fill").classList.toggle("charging", charging);
   // Shop orange below 30%: the gauge is non-linear near empty and the ring gives no
-  // warning of its own, so the threshold sits early on purpose.
-  $("batt-fill").classList.toggle("low", pct < 30);
+  // warning of its own, so the threshold sits early on purpose. Charging outranks it --
+  // a low battery on the charger is being handled and does not need attention.
+  $("batt-fill").classList.toggle("low", pct < 30 && !charging);
 }
 
 function renderStatus(health) {
@@ -199,6 +294,107 @@ async function refresh() {
     $("status-text").textContent = `Hub unreachable · ${err.message}`;
   }
 }
+
+/* --- manual sync --------------------------------------------------------
+ *
+ * The button does not sync. It asks the hub to ask systemd to run the same BLE unit the
+ * timer runs, then watches for a new row in sync_runs. Nothing on this page ever
+ * touches the store, which is the property the API is built around.
+ *
+ * A real sync takes ~25 s of radio time, so this is a poll rather than a wait: an iPhone
+ * will happily suspend a pending fetch when the screen locks, and a request held open
+ * across that comes back as a network error rather than a result. */
+
+const POLL_MS = 2000;
+const POLL_LIMIT = 90000 / POLL_MS; // 90 s -- comfortably past a slow sync, not forever
+
+let syncing = false;
+
+function setSyncState(state, label) {
+  const btn = $("sync-btn");
+  btn.classList.remove("busy", "ok", "err");
+  if (state) btn.classList.add(state);
+  btn.disabled = state === "busy";
+  $("sync-label").textContent = label;
+}
+
+async function runSync() {
+  if (syncing) return;
+  syncing = true;
+  setSyncState("busy", "Syncing");
+
+  try {
+    // The run id before we start is what makes "finished" detectable. A failed sync
+    // still writes a row, so a changed id means "it ran", not "it worked" -- the two
+    // are reported differently below.
+    const before = await getJSON("/api/sync/status");
+    const beforeId = before.last_run ? before.last_run.id : null;
+
+    const res = await fetch("/api/sync", { method: "POST" });
+    if (res.status === 429) {
+      const body = await res.json().catch(() => ({}));
+      setSyncState("err", "Too soon");
+      $("status-text").textContent = body.detail || "Synced too recently";
+      return;
+    }
+    if (!res.ok) throw new Error(`${res.status}`);
+
+    const started = await res.json();
+    if (!started.started && started.reason) {
+      // Already running -- fall through to polling rather than treating it as an error.
+      $("status-text").textContent = started.reason;
+    }
+
+    for (let i = 0; i < POLL_LIMIT; i++) {
+      await new Promise((r) => setTimeout(r, POLL_MS));
+      const now = await getJSON("/api/sync/status");
+      const run = now.last_run;
+      /* Three conditions, and the third is the load-bearing one. db.start_sync_run
+       * inserts its row with status "running" the moment a sync begins, so a changed id
+       * means "a run started", not "a run finished". systemd's view is a useful second
+       * opinion but it can be unavailable; the row is always there. */
+      const finished =
+        run && run.id !== beforeId && !now.running && run.status !== "running";
+
+      if (finished) {
+        await refresh();
+        if (run.status === "ok") {
+          setSyncState("ok", run.rows_ingested ? `+${run.rows_ingested}` : "Up to date");
+        } else {
+          // no_device is the common one and is not a fault: the ring is on a hand that
+          // leaves the house, and the sync service records that rather than failing.
+          setSyncState("err", run.status === "no_device" ? "No ring" : "Failed");
+        }
+        setTimeout(() => setSyncState(null, "Sync"), 6000);
+        return;
+      }
+    }
+
+    setSyncState("err", "Timed out");
+    setTimeout(() => setSyncState(null, "Sync"), 6000);
+  } catch (err) {
+    setSyncState("err", "Failed");
+    $("status-text").textContent = `Sync failed · ${err.message}`;
+    setTimeout(() => setSyncState(null, "Sync"), 6000);
+  } finally {
+    syncing = false;
+  }
+}
+
+const sheet = $("sync-sheet");
+const openSheet = () => { sheet.hidden = false; };
+const closeSheet = () => { sheet.hidden = true; };
+
+$("sync-btn").addEventListener("click", openSheet);
+$("sync-cancel").addEventListener("click", closeSheet);
+$("sync-cancel-bg").addEventListener("click", closeSheet);
+$("sync-go").addEventListener("click", () => {
+  closeSheet();
+  runSync();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !sheet.hidden) closeSheet();
+});
 
 $("range").addEventListener("click", (e) => {
   const btn = e.target.closest("button");

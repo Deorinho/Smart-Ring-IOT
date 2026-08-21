@@ -1,8 +1,16 @@
-"""Read-only JSON API and PWA host.
+"""JSON API and PWA host. Reads the store; never writes to it.
 
-Serves what `hub/db.py` stores. No writing, no syncing, no parsing — a browser hitting
-this can only ever read. The BLE service will be a separate process on a timer; keeping
-the reader incapable of mutation means a bug here cannot corrupt the store.
+Serves what `hub/db.py` stores. No writing, no parsing — a browser hitting this cannot
+mutate a single row. That property is deliberate and load-bearing: a bug or compromise
+in the reader cannot corrupt the store.
+
+**One qualification, added with the dashboard's Sync button.** `POST /api/sync` exists,
+so this is no longer a strictly read-only surface. It does not write either: it asks
+systemd to start `ring-sync-now.service`, the same BLE path the timer already uses, and
+that separate process does the writing under its own identity. The blast radius of this
+endpoint is therefore "can cause a sync to happen", not "can change stored data" — and
+`MANUAL_SYNC_COOLDOWN_S` bounds even that. If a future change makes this module able to
+touch the database directly, the property is gone and the docstring is a lie.
 
 Every timestamp leaving this API is UTC ISO-8601, exactly as stored. Conversion to
 local time happens in the browser, which is the display layer and the only place it
@@ -13,7 +21,9 @@ belongs.
 
 from __future__ import annotations
 
+import subprocess
 import sqlite3
+import time
 from datetime import datetime, timedelta, timezone
 
 from fastapi import FastAPI, HTTPException, Query
@@ -21,14 +31,31 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from hub import db
-from hub.config import DB_PATH, MANAGED_RINGS, REPO_ROOT, SYNC_HOURS_LOCAL
+from hub.config import (
+    DB_PATH,
+    MANAGED_RINGS,
+    MANUAL_SYNC_COOLDOWN_S,
+    REPO_ROOT,
+    SYNC_HOURS_LOCAL,
+    SYNC_STATUS_CMD,
+    SYNC_TRIGGER_CMD,
+)
 
 DASHBOARD_DIR = REPO_ROOT / "dashboard"
 
 # Metrics the dashboard is allowed to ask for. An allowlist rather than free-form
 # input: `metric` reaches a SQL query, and while it is parameterised, constraining the
 # surface costs one tuple and removes the question entirely.
-KNOWN_METRICS = ("heart_rate", "steps", "skin_temp", "spo2", "battery", "hrv", "stress")
+KNOWN_METRICS = (
+    "heart_rate",
+    "steps",
+    "skin_temp",
+    "spo2",
+    "battery",
+    "battery_charging",
+    "hrv",
+    "stress",
+)
 
 app = FastAPI(title="RavenX Smart Ring", docs_url=None, redoc_url=None)
 
@@ -143,6 +170,92 @@ def sync_runs(limit: int = Query(default=20, ge=1, le=200)) -> dict:
     conn = _conn()
     try:
         return {"runs": [dict(r) for r in db.recent_sync_runs(conn, limit)]}
+    finally:
+        conn.close()
+
+
+# --- Manual sync -----------------------------------------------------------
+# The only non-GET route in this module. See the module docstring for why it does not
+# break the "the reader cannot mutate the store" property.
+
+_last_trigger = 0.0
+
+
+def _sync_running() -> bool:
+    """True while ring-sync-now.service is starting or running.
+
+    `is-active` exits non-zero for inactive and failed units, so the return code is
+    useless on its own -- a failed sync and an idle one are both non-zero. The stdout
+    word is what carries the meaning.
+    """
+    try:
+        done = subprocess.run(
+            SYNC_STATUS_CMD, capture_output=True, text=True, timeout=5
+        )
+    except (OSError, subprocess.SubprocessError):
+        # systemd unreachable is not the same as "a sync is running". Reporting False
+        # lets the UI stop waiting instead of spinning forever on a hub that cannot
+        # answer, and the sync-run row is the source of truth for what happened anyway.
+        return False
+    return done.stdout.strip() in ("active", "activating", "reloading")
+
+
+@app.post("/api/sync", status_code=202)
+def trigger_sync() -> dict:
+    """Ask systemd to run one forced BLE sync. Returns immediately; poll for the result.
+
+    202 rather than 200 on purpose: nothing has synced yet when this returns. A real sync
+    takes ~25 s of radio time, which is far too long to hold a request open on a phone
+    that may lock its screen halfway through.
+    """
+    global _last_trigger
+
+    if _sync_running():
+        # Not an error. The user pressed twice, or a scheduled run is already going.
+        return {"started": False, "reason": "a sync is already running"}
+
+    waited = time.monotonic() - _last_trigger
+    if waited < MANUAL_SYNC_COOLDOWN_S:
+        raise HTTPException(
+            429,
+            f"wait {MANUAL_SYNC_COOLDOWN_S - waited:.0f}s before syncing again",
+        )
+
+    try:
+        done = subprocess.run(
+            SYNC_TRIGGER_CMD, capture_output=True, text=True, timeout=10
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise HTTPException(503, f"could not reach systemd: {exc}") from exc
+
+    if done.returncode != 0:
+        # Most likely the unit is not installed. Say so rather than leaving the phone
+        # spinning -- this is the failure a fresh hub will hit first.
+        raise HTTPException(
+            503,
+            f"systemd refused to start the sync: {done.stderr.strip() or 'unknown error'}",
+        )
+
+    _last_trigger = time.monotonic()
+    return {"started": True}
+
+
+@app.get("/api/sync/status")
+def sync_status() -> dict:
+    """Whether a sync is in flight, plus the most recent run.
+
+    The dashboard polls this after triggering. It compares `last_run.id` against the one
+    it saw before pressing, which is what distinguishes "finished" from "has not started
+    yet" -- a run that fails still writes a row, so the id moving is a reliable signal in
+    a way that "did new samples appear" is not.
+    """
+    conn = _conn()
+    try:
+        runs = db.recent_sync_runs(conn, limit=1)
+        return {
+            "running": _sync_running(),
+            "last_run": dict(runs[0]) if runs else None,
+        }
     finally:
         conn.close()
 

@@ -306,3 +306,157 @@ body {
   text-transform: uppercase;
   color: var(--color-neutral-600);
 }
+
+/* — battery: charging state —
+   Shop orange is already "attention" for a low battery, so charging gets its own
+   colour rather than borrowing one. Amber reads as transitional: not a fault, not
+   yet done. The bolt sits inside the shell so the two are one instrument. */
+.batt-fill.charging { background: #ffc44d; }
+
+.batt-bolt {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 9px;
+  display: none;
+  fill: var(--screen);
+}
+
+.batt-shell { position: relative; }
+.batt.is-charging .batt-bolt { display: block; }
+
+/* Charging is read only at sync time, so a stale "charging" is a real possibility.
+   The pulse says "as of the last sync" without needing a sentence to explain it. */
+.batt.is-charging .batt-fill { animation: batt-pulse 2.4s ease-in-out infinite; }
+
+@keyframes batt-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.62; }
+}
+
+/* — status bar + sync button — */
+.statusbar { display: flex; align-items: stretch; gap: 8px; }
+
+/* Let the status line WRAP rather than ellipsis away. The design's claim is that the
+   three numbers -- sync time, run count, clock offset -- are what decide whether
+   anything below them is true, so silently dropping the third to make room for a
+   button would trade the page's honesty for its convenience. Two lines is fine. */
+.statusbar .status { flex: 1; min-width: 0; }
+.statusbar .status #status-text { min-width: 0; }
+
+.sync-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(145, 132, 217, 0.35);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  color: var(--color-neutral-300);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  /* 44px minimum touch target: this is the only thing on the page you press. */
+  min-height: 44px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sync-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-accent) 20%, transparent);
+  color: var(--color-text);
+}
+
+.sync-btn:disabled { opacity: 0.55; cursor: default; }
+
+.sync-ico { width: 14px; height: 14px; flex: none; }
+
+.sync-btn.busy .sync-ico { animation: spin 1.1s linear infinite; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.sync-btn.ok { border-color: rgba(184, 242, 74, 0.5); color: var(--sig); }
+.sync-btn.err { border-color: rgba(255, 125, 43, 0.5); color: var(--shop); }
+
+/* — confirm sheet —
+   A bottom sheet rather than a centre modal: this is a phone-first page and the
+   thumb is at the bottom of it. */
+.sheet-wrap { position: fixed; inset: 0; z-index: 20; display: flex; align-items: flex-end; }
+.sheet-wrap[hidden] { display: none; }
+
+.sheet-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(9, 10, 18, 0.66);
+  backdrop-filter: blur(2px);
+}
+
+.sheet {
+  position: relative;
+  width: 100%;
+  background: var(--panel);
+  border-top: 1px solid rgba(145, 132, 217, 0.22);
+  border-radius: 14px 14px 0 0;
+  padding: 20px 18px max(20px, env(safe-area-inset-bottom));
+  animation: sheet-up 0.22s ease-out;
+}
+
+@keyframes sheet-up { from { transform: translateY(14px); opacity: 0; } }
+
+.sheet-title {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 19px;
+}
+
+.sheet-body {
+  margin: 8px 0 18px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--color-neutral-400);
+  text-wrap: pretty;
+}
+
+.sheet-actions { display: flex; gap: 10px; }
+
+.sheet-btn {
+  flex: 1;
+  min-height: 46px;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  border: 1px solid var(--panel-edge);
+}
+
+.sheet-btn.ghost { background: transparent; color: var(--color-neutral-400); }
+.sheet-btn.go {
+  background: var(--sig);
+  border-color: var(--sig);
+  color: #14200a;
+  font-weight: 600;
+}
+
+/* — chart scrubbing — */
+.spark-wrap { position: relative; touch-action: pan-y; cursor: crosshair; }
+
+.scrub-line { stroke: var(--color-accent); stroke-width: 1; stroke-dasharray: 2 2; }
+.scrub-dot { fill: var(--sig); stroke: var(--screen); stroke-width: 1.5; }
+
+.scrub-readout {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--color-neutral-300);
+}
+
+.scrub-readout[hidden] { display: none; }
+.scrub-bpm { font-size: 17px; color: var(--sig); }
+.scrub-unit { color: var(--color-neutral-500); font-size: 11px; }
+.scrub-time { margin-left: auto; color: var(--color-neutral-500); font-size: 11px; }

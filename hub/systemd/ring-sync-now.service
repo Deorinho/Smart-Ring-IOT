@@ -1,0 +1,37 @@
+# RavenX BLE sync, on demand — the unit behind the dashboard's Sync button.
+#
+#     cp hub/systemd/ring-sync-now.service ~/.config/systemd/user/
+#     systemctl --user daemon-reload
+#     systemctl --user start ring-sync-now      # what the button does
+#     journalctl --user -u ring-sync-now -f
+#
+# Identical to ring-sync.service except for --force, and deliberately a SEPARATE unit
+# rather than a flag on the existing one. Two reasons:
+#
+#   * The scheduled unit must keep its minimum-interval guard. That guard exists to
+#     protect the ring's battery from a misbehaving trigger, and weakening it for the
+#     button would weaken it for the timer too.
+#   * A manual sync means "I am standing next to the hub, right now" — skipping because
+#     a scheduled run happened twenty minutes ago would make the button look broken.
+#     --force is correct here and wrong there.
+#
+# There is NO [Install] section on purpose. This unit is never enabled and never
+# scheduled; it only ever runs because a human pressed something. Rate limiting lives in
+# hub/api.py, which refuses to trigger this more than once a minute.
+#
+# No timer, so nothing here fires at boot and R-005's Bluetooth-ordering concern applies
+# only to the scheduled sibling. After=bluetooth.target is kept anyway: it costs nothing
+# and the unit is a copy of one where it matters.
+
+[Unit]
+Description=RavenX Smart Ring BLE sync (manual, forced)
+After=bluetooth.target network.target
+Wants=bluetooth.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/Projects/RavenXSmartRing-IOT
+ExecStart=%h/Projects/RavenXSmartRing-IOT/.venv/bin/python -m hub.sync --force
+Environment=PYTHONUNBUFFERED=1
+
+TimeoutStartSec=300
