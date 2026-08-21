@@ -12,13 +12,22 @@ from dataclasses import dataclass
 from pathlib import Path
 
 # --- Paths -----------------------------------------------------------------
-# Hub layout (2026-08-08): the repo is cloned at ~/Projects/RavenXSmartRing-IOT.
-# Data deliberately sits OUTSIDE the working tree so a git pull, branch switch, or
-# clean can never touch it — the SQLite file is the one irreplaceable thing here.
+# Hub layout (2026-08-20): the repo is at /srv/ravenx/repo and data at /srv/ravenx/data.
+#
+# Both moved OUT of $HOME deliberately (Bug_Backlog R-018). /home/warlock is
+# eCryptfs-encrypted and does not exist until someone logs in interactively, which meant
+# no hub service survived a reboot and every scheduled sync while logged out died with
+# status=203/EXEC — systemd could not execute an interpreter inside an unmounted home.
+# Nothing a systemd service needs may live under $HOME on this machine.
+#
+# Data still sits outside the working tree so a git pull, branch switch, or clean can
+# never touch it — the SQLite file is the one irreplaceable thing here.
+#
+# The trade this makes is recorded honestly in HUB_SETUP.md 7b: ring.db loses eCryptfs
+# at-rest encryption. That protection only ever covered "stolen while powered off", and
+# this box is powered on essentially always.
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DATA_DIR = Path(
-    os.environ.get("RAVENX_DATA_DIR", Path.home() / "Projects" / "RavenXSmartRing-data")
-)
+DATA_DIR = Path(os.environ.get("RAVENX_DATA_DIR", "/srv/ravenx/data"))
 DB_PATH = DATA_DIR / "ring.db"
 SCHEMA_PATH = REPO_ROOT / "hub" / "schema.sql"
 
@@ -94,17 +103,17 @@ SYNC_DAYS_BACK = 3
 # --- Manual sync trigger -----------------------------------------------------
 # The dashboard's Sync button asks systemd to start a unit; hub/api.py never runs a BLE
 # sync itself and never writes to the store. Keeping the command here rather than inline
-# means the /srv migration (Bug_Backlog R-018), which turns these into SYSTEM units,
-# changes one line instead of hunting through route handlers.
-#
-# After that migration this becomes something like:
-#     ("sudo", "-n", "systemctl", "start", "ring-sync-now.service")
-# with a matching sudoers rule scoped to exactly this unit.
+# means the /srv migration (Bug_Backlog R-018), which turned these into SYSTEM units,
+# changed one line instead of a hunt through route handlers. It did.
+# `sudo -n` because the dashboard runs as a system service with no tty: -n fails fast
+# instead of hanging on a password prompt that nobody will ever answer. The permission
+# is one scoped line in hub/systemd/ravenx-sudoers naming this unit and nothing else.
 SYNC_TRIGGER_CMD: tuple[str, ...] = (
-    "systemctl", "--user", "start", "--no-block", "ring-sync-now.service",
+    "sudo", "-n", "/usr/bin/systemctl", "start", "--no-block", "ring-sync-now.service",
 )
+# Reading state needs no privilege at all, so this one is a plain call.
 SYNC_STATUS_CMD: tuple[str, ...] = (
-    "systemctl", "--user", "is-active", "ring-sync-now.service",
+    "systemctl", "is-active", "ring-sync-now.service",
 )
 
 # How often the API will honour a manual sync request. This is NOT the battery guard --
@@ -112,6 +121,22 @@ SYNC_STATUS_CMD: tuple[str, ...] = (
 # deliberately bypasses it with --force. This is only here so a stuck finger or a retry
 # loop cannot start a BLE connection every second.
 MANUAL_SYNC_COOLDOWN_S = 60
+
+
+# --- Alerting --------------------------------------------------------------
+# Bug_Backlog R-009. The ring has run itself flat twice unnoticed: 80% -> 1% during the
+# factory week, and 4% on 2026-08-20 *after* the dashboard gained a battery indicator.
+# An indicator informs; it does not notify. The gap it has to cover is nobody looking.
+#
+# 30% matches the dashboard's orange threshold and is not arbitrary: at ~17-18%/day that
+# is roughly a day and a half of warning, which is enough to reach a charger without
+# being so early that the alert becomes background noise you learn to dismiss.
+BATTERY_ALERT_PERCENT = 30
+
+# A hub that stopped syncing is the failure that actually loses data, and it is just as
+# invisible as a flat battery. Three scheduled syncs a day means a 24 h silence is well
+# past coincidence -- R-018 ate every scheduled run for days and nothing said so.
+STALE_SYNC_ALERT_HOURS = 24
 
 
 # Waiting for a multi-frame reply: stop once the stream has been quiet this long, and

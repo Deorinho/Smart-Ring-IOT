@@ -1,17 +1,10 @@
-# Three syncs a day, matching config.SYNC_HOURS_LOCAL.
+# Three syncs a day. Freshness is not a priority here — CLAUDE.md's battery contract
+# picks this cadence for "glance at it occasionally", not for a live dashboard.
 #
-# Three, not twenty. Sync frequency barely affects the ring's battery — the bytes moved
-# per day are roughly constant regardless of how they are split — but the dashboard is
-# something to glance at occasionally, not a live monitor. The earlier plan called for
-# hourly syncs tightened to every 15 minutes; that was tuned for freshness, which is not
-# what this project optimises for.
-#
-# OnCalendar is local time, deliberately: these hours are about when Abhi is likely near
-# the hub, which is a human schedule. Everything stored is still UTC.
-#
-# Persistent=true catches up a missed run after the hub has been off. Combined with
-# RandomizedDelaySec that means a boot at 09:00 fires a sync shortly after, once the
-# Bluetooth stack has had time to come up.
+# Persistent=true backfills a run missed while the machine was off. Note what that does
+# NOT cover: a run missed because the service failed. That distinction mattered during
+# R-018, when Persistent=true was set and every 08:00 and 14:00 slot still failed
+# silently, because the timer fired correctly and the service could not execute.
 
 [Unit]
 Description=RavenX Smart Ring sync schedule
@@ -21,8 +14,9 @@ OnCalendar=*-*-* 08:00:00
 OnCalendar=*-*-* 14:00:00
 OnCalendar=*-*-* 22:00:00
 Persistent=true
-RandomizedDelaySec=120
-Unit=ring-sync.service
+# A few minutes of jitter so three timers do not all wake the radio at once, and so a
+# sync never lands at exactly the same second as the backup.
+RandomizedDelaySec=180
 
 [Install]
 WantedBy=timers.target

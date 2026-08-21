@@ -1,0 +1,17 @@
+# Lets the dashboard start ONE unit, and nothing else.
+#
+#     sudo install -m 0440 -o root -g root hub/systemd/ravenx-sudoers /etc/sudoers.d/ravenx
+#     sudo visudo -c -f /etc/sudoers.d/ravenx      # verify before trusting it
+#
+# Why this exists: hub/api.py's Sync button asks systemd to run a BLE sync. As user
+# units that was `systemctl --user start`, which needed no privileges. System units do.
+#
+# The rule is deliberately narrow. It names one unit, one verb, no wildcards, and no
+# arguments the caller controls — so the worst an attacker with the dashboard endpoint
+# can do is cause a sync, which hub/api.py already rate-limits to once a minute and
+# which the ring's own minimum-interval guard bounds further.
+#
+# NOPASSWD is required because the dashboard runs unattended with no tty. `sudo -n`
+# in hub/api.py fails immediately rather than hanging if this file is missing.
+
+warlock ALL=(root) NOPASSWD: /usr/bin/systemctl start ring-sync-now.service

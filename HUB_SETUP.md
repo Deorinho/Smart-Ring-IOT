@@ -21,19 +21,30 @@ The machine as it actually exists, so nothing has to be re-derived each session.
 | WiFi | Must stay on **5 GHz**: one Broadcom radio is shared with Bluetooth, and 2.4 GHz degrades BLE scanning intermittently. |
 | VPN | Mullvad runs here. **Local network sharing must stay enabled** or SSH and the dashboard break. |
 
-Directory layout under `~/Projects`:
+Directory layout — **`/srv`, not `$HOME`**:
 
 ```text
+/srv/ravenx/
+├── repo/        # the git repo; .venv lives inside it
+└── data/        # SQLite store + backups — OUTSIDE the repo on purpose
+
 ~/Projects/
-├── RavenXSmartRing-IOT/     # the git repo; .venv lives inside it
-├── RavenXSmartRing-data/    # SQLite store + backups — OUTSIDE the repo on purpose
-├── ProjectScratchpad/       # throwaway BLE scripts (enumeration, device info, probes)
-└── Beltest/                 # session 1 Bluetooth scratch venv; historical
+├── ProjectScratchpad/   # throwaway BLE scripts; interactive use only
+└── Beltest/             # session 1 Bluetooth scratch venv; historical
 ```
 
-The data directory sits outside the working tree deliberately: a `git pull`, a branch
-switch, or a `git clean` must never be able to touch the SQLite file. `hub/config.py`
-encodes these paths — change them there, not in scripts.
+**Nothing a systemd service needs may live under `$HOME` on this machine.**
+`/home/warlock` is eCryptfs-encrypted and does not exist until someone logs in
+interactively, so anything a service reads from there is missing at boot and missing
+again the moment you log out. That cost a P1 (Bug_Backlog R-018) and days of silently
+failed syncs — see §6.
+
+The data directory sits outside the working tree for a separate reason: a `git pull`, a
+branch switch, or a `git clean` must never be able to touch the SQLite file.
+`hub/config.py` encodes both paths — change them there, not in scripts.
+
+Interactive scratch work can stay in `~/Projects`; it only runs when you are logged in
+anyway, which is exactly the condition an encrypted home satisfies.
 
 ---
 
@@ -321,16 +332,137 @@ so the R-005 mitigation written in session 1 never applied. And **rebooting is p
 testing any unattended claim.** "It ran for a day without me" and "it survives a restart"
 are different statements, and only the second one is what a 24/7 hub needs.
 
-The fix is to move the repo, venv and data to `/srv/ravenx` and convert all four units
-to system units with `User=warlock` — `PLAN.md` §6 session 8, tracked as Bug_Backlog
-R-018. This section gets rewritten then; until it does, treat everything above it as
-describing a layout that works only while someone is logged in.
+**This is fixed by §6b.** Everything above describes the user-unit layout that could
+never work on this machine; it is kept because the failure is worth recognising on the
+next box, not because it is the current design.
 
-**Interim, after any reboot**, until that migration lands:
+## 6b. The migration — user units to system units
+
+Run this once. It moves the repo, venv and data to `/srv/ravenx` and converts all six
+unit files to system units. **Do not skip step 1**: this moves the only live copy of
+data that cannot be re-created.
+
+**1. Back up, and get the copy off the hub.**
 
 ```bash
-systemctl --user start ring-dashboard ring-sync.timer ring-backup.timer
+cd ~/Projects/RavenXSmartRing-IOT && .venv/bin/python -m tools.backup
 ```
+
+From the **desktop**, before touching anything else:
+
+```bash
+scp hub:~/Projects/RavenXSmartRing-data/backups/*.db "C:/Users/Warlock/Desktop/Projects/RavenXSmartRing-backups/"
+```
+
+**2. Create the tree.**
+
+```bash
+sudo mkdir -p /srv/ravenx && sudo chown warlock:warlock /srv/ravenx
+```
+
+**3. Clone fresh — do not move the old directory.**
+
+```bash
+git clone https://github.com/Deorinho/Smart-Ring-IOT.git /srv/ravenx/repo
+```
+
+Cloning rather than `mv` leaves the old tree untouched as a fallback until the reboot
+test passes. Disk is not the constraint here; a working rollback is.
+
+**4. Build the venv at its final path.**
+
+```bash
+cd /srv/ravenx/repo && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+```
+
+**Never copy a venv.** Python bakes absolute paths into every console script in
+`.venv/bin`, and the failure is selective — `.venv/bin/python3` is a symlink and keeps
+working while `.venv/bin/uvicorn` dies. See §4; this has already bitten once.
+
+```bash
+.venv/bin/python -c "import bleak, fastapi, uvicorn; print('deps ok')" && .venv/bin/uvicorn --version
+```
+
+**5. Copy the data across and verify it before trusting it.**
+
+```bash
+mkdir -p /srv/ravenx/data && cp -a ~/Projects/RavenXSmartRing-data/. /srv/ravenx/data/
+```
+
+```bash
+cd /srv/ravenx/repo && RAVENX_DATA_DIR=/srv/ravenx/data .venv/bin/python -m tools.restore --latest
+```
+
+`restore.py` reads the copy back through the application layer, so a pass means the
+services will be able to read it — not merely that the bytes arrived.
+
+**6. Stop and disable the old user units.**
+
+```bash
+systemctl --user disable --now ring-dashboard ring-sync.timer ring-backup.timer
+rm -f ~/.config/systemd/user/ring-*.service ~/.config/systemd/user/ring-*.timer
+systemctl --user daemon-reload
+```
+
+Removing the files matters. Two copies of a unit with the same name in two managers is
+a debugging session nobody enjoys.
+
+**7. Install the system units and the sudoers rule.**
+
+```bash
+sudo cp /srv/ravenx/repo/hub/systemd/ring-*.service /srv/ravenx/repo/hub/systemd/ring-*.timer /etc/systemd/system/
+sudo install -m 0440 -o root -g root /srv/ravenx/repo/hub/systemd/ravenx-sudoers /etc/sudoers.d/ravenx
+sudo visudo -c -f /etc/sudoers.d/ravenx
+sudo systemctl daemon-reload
+```
+
+**`visudo -c` before you trust it.** A malformed sudoers file can lock you out of `sudo`
+entirely, and this is a headless machine.
+
+**8. Enable and start.**
+
+```bash
+sudo systemctl enable --now ring-dashboard ring-sync.timer ring-backup.timer
+systemctl status ring-dashboard --no-pager
+```
+
+**9. Prove it before rebooting.**
+
+```bash
+curl -s localhost:8000/api/health | head -c 120
+curl -s -o /dev/null -w "sync trigger: %{http_code}
+" -X POST localhost:8000/api/sync
+systemctl list-timers 'ring-*' --no-pager
+```
+
+`202` from the trigger means the sudoers rule works. Have the ring nearby — that starts
+a real sync.
+
+**10. The exit criterion. Reboot, and do not log in.**
+
+```bash
+sudo reboot
+```
+
+Wait two minutes, then open the dashboard **on your phone** without SSH-ing in first.
+If it loads, R-018 is closed and every service on this hub survives a restart.
+
+Then confirm from a shell:
+
+```bash
+systemctl list-timers 'ring-*' --no-pager && systemctl is-active ring-dashboard
+```
+
+**11. Only now, retire the old tree.**
+
+```bash
+mv ~/Projects/RavenXSmartRing-IOT ~/Projects/RavenXSmartRing-IOT.old
+mv ~/Projects/RavenXSmartRing-data ~/Projects/RavenXSmartRing-data.old
+```
+
+Rename rather than delete, and reboot once more. If anything still points at the old
+paths it will fail loudly now, while the data is still there, instead of quietly in a
+month. Delete them a week later.
 
 ## 6a. The firewall will silently eat your first service
 
@@ -440,6 +572,59 @@ desktop:
 ```bash
 rsync -av warlock@10.0.0.213:~/Projects/RavenXSmartRing-data/backups/ ./backups/
 ```
+
+## 7a-bis. The battery alert (Bug_Backlog R-009)
+
+The ring has run itself flat twice unnoticed: 80% to 1% during the factory week, and 4%
+on 2026-08-20 — the second time *after* the dashboard gained a battery indicator. An
+indicator informs; it does not notify. The gap it has to cover is nobody looking at the
+dashboard.
+
+**Why this is a Shortcut and not Web Push.** Web Push genuinely works on an installed
+iOS PWA, and the hub could send it — push is outbound, so a tailnet-only hub is no
+obstacle. It was rejected on reliability: iOS expires push subscriptions for apps you
+have not opened recently, so a warning needed once every 5.5 days would depend on a
+mechanism designed to garbage-collect exactly that dormancy. Its failure mode is
+silence, and you would find out by not being warned. A daily Shortcut cannot expire, and
+at ~17–18%/day you cannot act on a low battery faster than the next time you pass a
+charger anyway.
+
+The hub does the thinking so the phone side stays trivial:
+
+```bash
+curl -s https://warlock.<tailnet>.ts.net/api/alert
+```
+
+```json
+{"alert": true, "message": "Ring battery 22% - about 1 day left", "checked_utc": "..."}
+```
+
+It reports two conditions, not one. A flat ring and a **stopped hub** are equally
+invisible, and only the first is one anybody thinks to check — R-018 ate every scheduled
+sync for days and nothing said so.
+
+**Build the automation** on the iPhone, in Shortcuts → Automation → **+** → Time of Day:
+
+1. **09:00, Daily**, and turn **Ask Before Running** OFF
+2. **Get Contents of URL** → `https://warlock.<tailnet>.ts.net/api/alert`
+3. **If** → `Get Dictionary Value` `alert` → **is** → `1`
+4. **Show Notification** → `Get Dictionary Value` `message`
+
+**Verify it once, deliberately.** An alert that only fires when something is wrong gives
+you no evidence it works — the same trap as an unrestored backup, which this project has
+already fallen into once. Temporarily lower the bar so it must fire:
+
+```bash
+sudo sed -i 's/^BATTERY_ALERT_PERCENT = 30/BATTERY_ALERT_PERCENT = 100/' /srv/ravenx/repo/hub/config.py
+sudo systemctl restart ring-dashboard
+```
+
+Run the automation by hand from Shortcuts, confirm the notification arrives, then put it
+back to `30` and restart again. Do not skip this. A notification path you have never
+seen deliver is a belief.
+
+Requires Tailscale connected on the phone when it runs — which, since Mullvad came off
+the phone (R-019), is now the normal state.
 
 ## 7b. Hardening pass
 

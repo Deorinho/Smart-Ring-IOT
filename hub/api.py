@@ -32,11 +32,13 @@ from fastapi.staticfiles import StaticFiles
 
 from hub import db
 from hub.config import (
+    BATTERY_ALERT_PERCENT,
     DB_PATH,
     MANAGED_RINGS,
     MANUAL_SYNC_COOLDOWN_S,
     REPO_ROOT,
     SYNC_HOURS_LOCAL,
+    STALE_SYNC_ALERT_HOURS,
     SYNC_STATUS_CMD,
     SYNC_TRIGGER_CMD,
 )
@@ -172,6 +174,79 @@ def sync_runs(limit: int = Query(default=20, ge=1, le=200)) -> dict:
         return {"runs": [dict(r) for r in db.recent_sync_runs(conn, limit)]}
     finally:
         conn.close()
+
+
+# --- Alerting --------------------------------------------------------------
+
+
+@app.get("/api/alert")
+def alert() -> dict:
+    """One question: is there anything about the ring I should act on right now?
+
+    Bug_Backlog R-009. Built for an iOS Shortcuts automation rather than Web Push, and
+    that is a deliberate choice. Web Push works on an installed iOS PWA, but Apple expires
+    push subscriptions for apps you have not opened in a while -- so a warning needed once
+    every 5.5 days would run on a mechanism designed to garbage-collect exactly that kind
+    of dormancy, and its failure mode is silence. You would discover it was broken by not
+    being warned, which is the same trap as an unrestored backup.
+
+    A daily Shortcut cannot silently expire, needs no keys, no crypto, no third party, and
+    no dependency. It also does not need to be fast: at ~17-18%/day you cannot act on a
+    low battery sooner than the next time you pass a charger.
+
+    All the thinking happens here so the phone side stays three steps. Shortcuts' JSON
+    handling is clumsy, and logic split across a hub and a phone automation is logic that
+    rots on the side you cannot read.
+
+    Two conditions, because a flat ring and a stopped hub are equally invisible and only
+    one of them is what people think to check.
+    """
+    conn = _conn()
+    try:
+        now = datetime.now(timezone.utc)
+        reasons: list[str] = []
+
+        battery = db.latest_sample(conn, "battery")
+        if battery is not None and battery["value"] <= BATTERY_ALERT_PERCENT:
+            pct = int(battery["value"])
+            # Days remaining from the measured drain rate, not a guess. Deliberately not
+            # shown below one day: "0.4 days" invites precision the gauge cannot support,
+            # and CLAUDE.md's standing rule is that this gauge is badly non-linear.
+            days_left = pct / 17.5
+            whole = round(days_left)
+            tail = (
+                f"about {whole} day{'s' if whole != 1 else ''} left"
+                if days_left >= 1
+                else "charge it today"
+            )
+            reasons.append(f"Ring battery {pct}% - {tail}")
+
+        latest = db.latest_sample(conn, "heart_rate")
+        if latest is None:
+            reasons.append("No readings stored at all")
+        else:
+            age_h = (now - _parse_iso(latest["ts_utc"])).total_seconds() / 3600
+            if age_h >= STALE_SYNC_ALERT_HOURS:
+                reasons.append(f"No new readings for {age_h:.0f} h - hub may not be syncing")
+
+        return {
+            "alert": bool(reasons),
+            "message": " | ".join(reasons) if reasons else "Ring OK",
+            "checked_utc": db.to_iso_utc(now),
+        }
+    finally:
+        conn.close()
+
+
+def _parse_iso(ts: str) -> datetime:
+    """Parse the project's one canonical timestamp format back into an aware datetime.
+
+    Everything in storage is written by `db.to_iso_utc`, so the trailing Z is guaranteed
+    -- but `fromisoformat` did not accept Z before Python 3.11 and the hub runs 3.12
+    while the desktop runs 3.14. Swapping it for +00:00 costs nothing and removes the
+    version question entirely.
+    """
+    return datetime.fromisoformat(ts.replace("Z", "+00:00"))
 
 
 # --- Manual sync -----------------------------------------------------------
