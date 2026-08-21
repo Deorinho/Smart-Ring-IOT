@@ -73,31 +73,38 @@ function sparkline(el, points) {
     y2="${py(Math.min(...ys)).toFixed(1)}" stroke="#9184d9" stroke-opacity="0.3"
     stroke-width="0.6" stroke-dasharray="3 3"/>`;
 
-  let series;
+  /* Every round marker is an HTML element, not an SVG <circle>.
+   *
+   * The chart stretches to the card's width with preserveAspectRatio="none", so x and y
+   * scale by different factors -- 220x44 drawn into roughly 339x56. An SVG circle in
+   * that space renders as a visibly squashed ellipse, which is what the scrub dot and
+   * the end-of-series dot both looked like. A positioned div with border-radius: 50%
+   * cannot be distorted by the SVG's transform, so it is round at every screen width.
+   *
+   * Only the line work stays in SVG, where non-uniform scaling is harmless because
+   * vector-effect keeps the stroke width honest. */
+  const marker = (i, cls) =>
+    `<div class="spark-marker ${cls}" style="left:${((px(xs[i]) / W) * 100).toFixed(2)}%;` +
+    `top:${((py(points[i].v) / H) * 100).toFixed(2)}%"></div>`;
+
+  let series = "";
+  let dots = "";
   if (points.length >= LINE_THRESHOLD) {
     const pts = points.map((p, i) => `${px(xs[i]).toFixed(1)},${py(p.v).toFixed(1)}`);
-    series =
-      `<polyline points="${pts.join(" ")}" fill="none" stroke="#9184d9"
+    series = `<polyline points="${pts.join(" ")}" fill="none" stroke="#9184d9"
          stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"
-         vector-effect="non-scaling-stroke"/>` +
-      `<circle cx="${px(xs.at(-1)).toFixed(1)}" cy="${py(ys.at(-1)).toFixed(1)}"
-         r="2.6" fill="#b8f24a"/>`;
+         vector-effect="non-scaling-stroke"/>`;
+    dots = marker(points.length - 1, "last");
   } else {
-    series = points
-      .map(
-        (p, i) =>
-          `<circle cx="${px(xs[i]).toFixed(1)}" cy="${py(p.v).toFixed(1)}"
-             r="1.9" fill="#b8f24a"/>`
-      )
-      .join("");
+    dots = points.map((_, i) => marker(i, "point")).join("");
   }
 
   el.innerHTML = `<svg class="spark" viewBox="0 0 ${W} ${H}"
     preserveAspectRatio="none" style="overflow:visible"
     xmlns="http://www.w3.org/2000/svg">${baseline}${series}
-    <line class="scrub-line" id="scrub-line" x1="0" y1="0" x2="0" y2="${H}" opacity="0"/>
-    <circle class="scrub-dot" id="scrub-dot" r="3.2" cx="0" cy="0" opacity="0"/>
-  </svg>`;
+    <line class="scrub-line" id="scrub-line" x1="0" y1="0" x2="0" y2="${H}"
+      opacity="0" vector-effect="non-scaling-stroke"/>
+  </svg>${dots}<div class="spark-marker scrub" id="scrub-marker" hidden></div>`;
 
   // Hand the scrub handler the same arrays the chart was drawn from, so the readout
   // cannot drift from the line. Recomputing them would be a second source of truth.
@@ -116,8 +123,17 @@ function sparkline(el, points) {
 function attachScrub(el, points, xs, px, py) {
   const readout = $("scrub");
   const line = $("scrub-line");
-  const dot = $("scrub-dot");
+  const dot = $("scrub-marker");
   if (!line || !dot || points.length === 0) return;
+
+  // Explicit drag flag rather than inspecting the event.
+  //
+  // The first version gated pointermove on `e.pressure > 0 || e.buttons`, which is true
+  // for a mouse and FALSE for an ordinary iOS touch -- pressure is 0 without force
+  // touch, and buttons is not reliably set. Scrubbing therefore worked on the desktop
+  // and did nothing on the phone, which is the device it was built for. The synthetic
+  // test missed it by setting pressure: 0.5, a value no real finger produces.
+  let dragging = false;
 
   const show = (clientX) => {
     const box = el.getBoundingClientRect();
@@ -140,9 +156,11 @@ function attachScrub(el, points, xs, px, py) {
     line.setAttribute("x1", x);
     line.setAttribute("x2", x);
     line.setAttribute("opacity", "1");
-    dot.setAttribute("cx", x);
-    dot.setAttribute("cy", py(point.v));
-    dot.setAttribute("opacity", "1");
+    // Percentages, matching how the static markers are placed -- the wrapper is exactly
+    // the chart's box, so viewBox coordinates map straight onto it.
+    dot.style.left = `${((x / W) * 100).toFixed(2)}%`;
+    dot.style.top = `${((py(point.v) / H) * 100).toFixed(2)}%`;
+    dot.hidden = false;
 
     $("scrub-bpm").textContent = Math.round(point.v);
     // Multi-day windows need the date; a bare clock time on a 30 d chart is a lie.
@@ -155,14 +173,16 @@ function attachScrub(el, points, xs, px, py) {
   };
 
   const hide = () => {
+    dragging = false;
     line.setAttribute("opacity", "0");
-    dot.setAttribute("opacity", "0");
+    dot.hidden = true;
     readout.hidden = true;
   };
 
   // Pointer events cover mouse and touch in one path. touch-action: pan-y in the CSS
   // lets a vertical page scroll through the chart while claiming horizontal drags.
   el.addEventListener("pointerdown", (e) => {
+    dragging = true;
     // Capture keeps the readout tracking if the finger slides off the chart mid-drag.
     // It throws for a pointer id the element does not own, which must not take the
     // scrub down with it -- the readout is the feature, capture is the polish.
@@ -174,11 +194,15 @@ function attachScrub(el, points, xs, px, py) {
     show(e.clientX);
   });
   el.addEventListener("pointermove", (e) => {
-    if (e.pressure > 0 || e.buttons || e.pointerType === "mouse") show(e.clientX);
+    if (dragging) show(e.clientX);
   });
   el.addEventListener("pointerup", hide);
   el.addEventListener("pointercancel", hide);
   el.addEventListener("pointerleave", hide);
+
+  // Belt and braces for iOS, where a touch that begins to look like a page gesture can
+  // be taken away mid-drag without a pointercancel arriving.
+  el.addEventListener("touchend", hide);
 }
 
 /* --- panels ------------------------------------------------------------- */
