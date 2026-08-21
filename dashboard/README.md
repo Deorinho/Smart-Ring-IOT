@@ -70,7 +70,7 @@ Its caching policy is asymmetric on purpose:
 
 | Request | Policy | Why |
 | --- | --- | --- |
-| shell (html/css/js/icons) | stale-while-revalidate | Static, no build step. Cache-first without revalidation would mean bumping a version string by hand after every edit — a chore that gets skipped and then debugged for an hour. |
+| shell (html/css/js/icons) | network-first, cache as offline fallback | What is deployed is what you see. Stale-while-revalidate was tried first and is wrong for a project under active change: the first load after every deploy served the OLD files, producing a page of new markup styled by an old stylesheet — which looks like a bug, not a cache. Cost a debugging round on 2026-08-20. |
 | `/api/*` | **network only, never cached** | A cached reading replayed as current would break the one promise this design makes. Offline, the fetch fails and the status line says "Hub unreachable", which is an honest thing for a screen to say. |
 
 **It requires a secure context.** Over plain http on the LAN, registration rejects and
@@ -87,7 +87,42 @@ itself was served without a network.
 The offline test is the cheapest way to re-confirm the worker after any change to `sw.js`
 or the shell file list: airplane mode, relaunch, see whether it paints.
 
-Bump `CACHE` in `sw.js` if a shell file ever needs to be force-evicted.
+Bump `CACHE` in `sw.js` if a shell file ever needs to be force-evicted. With
+network-first this is rarely necessary — the cache only serves when the hub is
+unreachable, so a stale entry cannot mask a deploy.
+
+**If the phone ever does look stale:** fully quit the PWA from the app switcher and
+reopen twice. The first relaunch fetches the new worker, the second runs it.
+
+## Round markers are HTML, not SVG
+
+The chart stretches to the card width with `preserveAspectRatio="none"`, so a 220x44
+viewBox is drawn into roughly 339x56 and x and y scale by different factors. Any
+`<circle>` in that space renders as a visibly squashed ellipse — which is what the scrub
+dot and the end-of-series dot both were until 2026-08-20.
+
+Markers are therefore absolutely-positioned `div`s with `border-radius: 50%`, placed by
+percentage. `.spark-wrap` carries the chart's top margin rather than `.spark` doing so,
+because the wrapper has to be exactly the chart's box for those percentages to land.
+
+Only line work stays in SVG, where the same distortion is harmless as long as
+`vector-effect="non-scaling-stroke"` keeps stroke widths from stretching.
+
+## Two iOS traps worth remembering
+
+**`<button>` needs `appearance: none`.** Without it iOS paints its own chrome and the
+sync button rendered as a white pill that ignored the theme entirely, while the desktop
+looked correct.
+
+**`color-mix()` as the only `background` is a trap.** If a Safari version does not
+support the function the whole declaration is dropped and the UA default shows through.
+Use `rgba()` for anything load-bearing, or pair `color-mix()` with a plain fallback
+declared before it.
+
+**Touch pointers report `pressure: 0`.** Scrubbing originally gated `pointermove` on
+`e.pressure > 0 || e.buttons`, which is true for a mouse and false for an ordinary iOS
+touch — so it worked on the desktop and did nothing on the phone, the device it exists
+for. Track a `dragging` flag set on `pointerdown` instead of interrogating the event.
 
 ## The sync button
 

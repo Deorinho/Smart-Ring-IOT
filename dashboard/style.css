@@ -235,7 +235,7 @@ body {
   color: var(--color-neutral-500);
 }
 
-.spark { width: 100%; height: 56px; margin-top: 16px; display: block; }
+.spark { width: 100%; height: 56px; display: block; }
 
 /* — empty states —
    An awaiting card names the session that fills it. The dashboard reads as a build
@@ -354,7 +354,15 @@ body {
   padding: 0 12px;
   border-radius: 6px;
   border: 1px solid rgba(145, 132, 217, 0.35);
-  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  /* iOS paints its own chrome on a <button> unless this is off, and the result is a
+     white pill that ignores the theme entirely. */
+  -webkit-appearance: none;
+  appearance: none;
+  /* rgba(), not color-mix(). If a Safari version does not support color-mix the whole
+     declaration is dropped and the UA default -- white -- shows through, which is
+     exactly what happened on the phone while the desktop looked correct. This is the
+     same colour, expressed in a function that has worked everywhere for a decade. */
+  background: rgba(145, 132, 217, 0.12);
   color: var(--color-neutral-300);
   font: inherit;
   font-size: 11px;
@@ -367,7 +375,7 @@ body {
 }
 
 .sync-btn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-accent) 20%, transparent);
+  background: rgba(145, 132, 217, 0.2);
   color: var(--color-text);
 }
 
@@ -424,6 +432,8 @@ body {
 .sheet-actions { display: flex; gap: 10px; }
 
 .sheet-btn {
+  -webkit-appearance: none;
+  appearance: none;
   flex: 1;
   min-height: 46px;
   border-radius: 8px;
@@ -442,10 +452,38 @@ body {
 }
 
 /* — chart scrubbing — */
-.spark-wrap { position: relative; touch-action: pan-y; cursor: crosshair; }
+/* margin lives here, not on .spark: the wrapper has to be exactly the chart's box or
+   the percentage-positioned markers land in the wrong place. */
+.spark-wrap {
+  position: relative;
+  margin-top: 16px;
+  touch-action: pan-y;
+  cursor: crosshair;
+}
 
 .scrub-line { stroke: var(--color-accent); stroke-width: 1; stroke-dasharray: 2 2; }
-.scrub-dot { fill: var(--sig); stroke: var(--screen); stroke-width: 1.5; }
+
+/* Round markers as HTML, because an SVG circle inside a non-uniformly stretched
+   viewBox renders as an ellipse. See the comment in app.js's sparkline(). */
+.spark-marker {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--sig);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.spark-marker.point { width: 4px; height: 4px; }
+.spark-marker.last { width: 5.5px; height: 5.5px; }
+
+.spark-marker.scrub {
+  width: 9px;
+  height: 9px;
+  /* A ring of the page ground separates the marker from the line it sits on. */
+  box-shadow: 0 0 0 2px var(--screen);
+}
+
+.spark-marker[hidden] { display: none; }
 
 .scrub-readout {
   display: flex;
