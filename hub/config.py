@@ -91,6 +91,29 @@ MIN_SECONDS_BETWEEN_SYNCS = 1800  # guard against a misbehaving trigger draining
 # gaps from a missed sync or an unreachable ring, not a retention policy.
 SYNC_DAYS_BACK = 3
 
+# --- Manual sync trigger -----------------------------------------------------
+# The dashboard's Sync button asks systemd to start a unit; hub/api.py never runs a BLE
+# sync itself and never writes to the store. Keeping the command here rather than inline
+# means the /srv migration (Bug_Backlog R-018), which turns these into SYSTEM units,
+# changes one line instead of hunting through route handlers.
+#
+# After that migration this becomes something like:
+#     ("sudo", "-n", "systemctl", "start", "ring-sync-now.service")
+# with a matching sudoers rule scoped to exactly this unit.
+SYNC_TRIGGER_CMD: tuple[str, ...] = (
+    "systemctl", "--user", "start", "--no-block", "ring-sync-now.service",
+)
+SYNC_STATUS_CMD: tuple[str, ...] = (
+    "systemctl", "--user", "is-active", "ring-sync-now.service",
+)
+
+# How often the API will honour a manual sync request. This is NOT the battery guard --
+# MIN_SECONDS_BETWEEN_SYNCS above still governs scheduled runs, and the manual unit
+# deliberately bypasses it with --force. This is only here so a stuck finger or a retry
+# loop cannot start a BLE connection every second.
+MANUAL_SYNC_COOLDOWN_S = 60
+
+
 # Waiting for a multi-frame reply: stop once the stream has been quiet this long, and
 # never wait longer than the cap. The ring declares its frame count in the header, but
 # quiet-detection also terminates correctly on a malformed or truncated burst.

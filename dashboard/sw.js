@@ -30,7 +30,7 @@
  * "Hub unreachable", which is an honest thing for a screen to say.
  */
 
-const CACHE = "rx06-shell-v1";
+const CACHE = "rx06-shell-v2";
 
 /* Everything needed to paint the dashboard with no network. Kept explicit rather than
  * globbed: there is no build step to generate a manifest from, and a short list that is

@@ -88,3 +88,52 @@ The offline test is the cheapest way to re-confirm the worker after any change t
 or the shell file list: airplane mode, relaunch, see whether it paints.
 
 Bump `CACHE` in `sw.js` if a shell file ever needs to be force-evicted.
+
+## The sync button
+
+Pressing it does not sync. It `POST`s to `/api/sync`, which asks systemd to start
+`ring-sync-now.service` — the same BLE path the timer already runs, just with `--force`
+so a scheduled run twenty minutes ago does not make the button look broken. **The API
+still never writes to the store**; the separate sync process does, under its own
+identity. That property is why `hub/api.py` is safe to expose.
+
+A confirm sheet sits in front of it, and it earns its place: the sync happens between the
+ring and the hub over Bluetooth, and the phone is the one device in the system that can
+tell you nothing about where either of them is. Body-worn costs about 21 dB (R-010), so
+"another room" is a plausible failure and worth a sentence before a 25-second wait.
+
+The flow is a poll, not a wait. iOS suspends pending fetches when the screen locks, so a
+request held open across a real sync comes back as a network error rather than a result.
+The client records `sync_runs.id` before triggering and watches for it to change **and**
+for the row to stop saying `running` — `db.start_sync_run` inserts its row at the *start*
+of a sync, so a changed id alone means "started", not "finished".
+
+Outcomes are distinguished rather than flattened: `+N` on rows ingested, "Up to date"
+when a successful sync found nothing new, and "No ring" for `no_device` — which is not a
+fault. The ring is on a hand that leaves the house.
+
+## Charging state
+
+The battery pill turns amber with a bolt when the ring is on the charger, and the pulse
+is deliberate: **charging is only ever sampled at sync time.** Nothing polls the ring, so
+this reading is exactly as old as the last sync, and the animation says "as of then"
+without needing a caption.
+
+The flag is only believed when `battery_charging.ts_utc` matches `battery.ts_utc`. A
+charging state from yesterday rendered beside a fresh percentage would be the dashboard
+asserting something it does not know — the same rule the rest of this page follows.
+
+Charging outranks the low-battery orange. A ring at 8% on the charger is being handled
+and does not need attention.
+
+## Scrubbing the chart
+
+Drag across the heart-rate chart to read any point. The value is the **nearest real
+sample**, never interpolated: the ring measures twice an hour, and a number invented
+between two readings would be a fabrication rendered in the same style as a measurement.
+
+The readout shows a bare clock time on the 24 h window and adds the date on 7 d and 30 d,
+for the same reason the status line switches to elapsed time past ~20 hours.
+
+`touch-action: pan-y` lets a vertical page scroll pass through the chart while horizontal
+drags are claimed for scrubbing.
