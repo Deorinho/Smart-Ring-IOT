@@ -43,6 +43,12 @@
   --shop: #ff7d2b;        /* shop orange — attention, not yet */
   --violet-mid: #6d61ad;
   --violet-dim: #3e3f57;
+
+  /* Build id, read back by app.js. If this does not match the constant in app.js the
+     browser is running a mismatched shell -- new markup against an old stylesheet, the
+     failure that made the sync button render white and the charging bolt appear at
+     full size while not charging. Bump both together. */
+  --build: "0820b";
 }
 
 * { box-sizing: border-box; }
@@ -313,6 +319,11 @@ body {
    yet done. The bolt sits inside the shell so the two are one instrument. */
 .batt-fill.charging { background: #ffc44d; }
 
+/* Visibility is driven by the `hidden` attribute in the markup, not by a CSS rule.
+   A stale stylesheet must not be able to make the bolt appear -- markup that fails
+   safe beats markup that depends on CSS arriving. */
+.batt-bolt[hidden] { display: none; }
+
 .batt-bolt {
   position: absolute;
   top: 50%;
@@ -320,12 +331,10 @@ body {
   transform: translate(-50%, -50%);
   width: 6px;
   height: 9px;
-  display: none;
   fill: var(--screen);
 }
 
 .batt-shell { position: relative; }
-.batt.is-charging .batt-bolt { display: block; }
 
 /* Charging is read only at sync time, so a stale "charging" is a real possibility.
    The pulse says "as of the last sync" without needing a sentence to explain it. */
@@ -498,3 +507,9 @@ body {
 .scrub-bpm { font-size: 17px; color: var(--sig); }
 .scrub-unit { color: var(--color-neutral-500); font-size: 11px; }
 .scrub-time { margin-left: auto; color: var(--color-neutral-500); font-size: 11px; }
+
+/* Build stamp in the footer. Orange when the shell's pieces disagree -- that is a
+   stale-cache condition, and the whole point is that it should be impossible to
+   mistake for a styling bug. */
+#build { letter-spacing: 0.08em; }
+#build.mismatch { color: var(--shop); letter-spacing: 0.06em; }

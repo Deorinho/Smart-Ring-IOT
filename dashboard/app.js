@@ -9,6 +9,11 @@
  * the display layer and the only place that conversion may happen.
  */
 
+/* Build id. Must match --build in style.css; they are compared at boot so a shell
+ * assembled from mismatched files announces itself instead of looking like a styling
+ * bug. Bump both on any change to the shell. */
+const BUILD = "0820b";
+
 const $ = (id) => document.getElementById(id);
 const pad = (n) => String(n).padStart(2, "0");
 
@@ -227,6 +232,15 @@ function renderBattery(latest) {
 
   $("batt").classList.toggle("is-charging", charging);
   $("batt-fill").classList.toggle("charging", charging);
+  /* toggleAttribute, not `.hidden`. The bolt is an SVGElement and `hidden` is an IDL
+   * property of HTMLElement, which SVGElement does not inherit -- assigning it creates
+   * a meaningless JS expando while the real attribute stays put, so the bolt silently
+   * refused to appear while charging. Attributes work on every element.
+   *
+   * Driving visibility from the attribute rather than a CSS class is deliberate: it
+   * stays correct even when the stylesheet is stale, which is how the bolt once showed
+   * at full size while the ring was not charging. */
+  $("batt-bolt").toggleAttribute("hidden", !charging);
   // Shop orange below 30%: the gauge is non-linear near empty and the ring gives no
   // warning of its own, so the threshold sits early on purpose. Charging outranks it --
   // a low battery on the charger is being handled and does not need attention.
@@ -430,6 +444,29 @@ $("range").addEventListener("click", (e) => {
   refresh();
 });
 
+/* Show which shell is running, and shout if the pieces disagree. A service worker
+ * serving a cached stylesheet behind fresh markup produces a page that looks broken in
+ * ways that have nothing to do with the code -- this turns that into one legible line
+ * rather than an evening of guessing. */
+function showBuild() {
+  const cssBuild = getComputedStyle(document.documentElement)
+    .getPropertyValue("--build")
+    .trim()
+    .replace(/["']/g, "");
+  const el = $("build");
+  if (!cssBuild) {
+    el.textContent = `js ${BUILD} · css ?`;
+    el.classList.add("mismatch");
+    return;
+  }
+  el.textContent = `build ${BUILD}`;
+  if (cssBuild !== BUILD) {
+    el.textContent = `js ${BUILD} · css ${cssBuild} — STALE`;
+    el.classList.add("mismatch");
+  }
+}
+
+showBuild();
 refresh();
 // The hub syncs three times a day, so polling harder buys nothing. Five minutes keeps
 // a tab left open honest without pretending this is real-time.
