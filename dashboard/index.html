@@ -23,7 +23,7 @@
       <span class="batt-fill" id="batt-fill" style="width:0"></span>
       <!-- Only shown while charging. Inside the shell so it reads as one instrument
            rather than an icon that happens to sit nearby. -->
-      <svg class="batt-bolt" id="batt-bolt" viewBox="0 0 8 12" aria-hidden="true">
+      <svg class="batt-bolt" id="batt-bolt" viewBox="0 0 8 12" aria-hidden="true" hidden>
         <path d="M4.6 0 0.6 6.6h2.6L3.4 12 7.4 5.2H4.8L4.6 0Z"/>
       </svg>
     </span>
@@ -122,6 +122,10 @@
 
 <footer class="source num">
   <span id="ring-name">—</span>
+  <!-- Which shell is actually running. A stale service worker can serve old CSS and JS
+       behind new markup, which looks like a styling bug rather than a cache; this makes
+       that state visible instead of a guess. -->
+  <span id="build" title="dashboard build">—</span>
   <span id="ring-addr"></span>
 </footer>
 
