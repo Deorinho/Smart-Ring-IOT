@@ -130,7 +130,16 @@ class Collector:
         return self.frames[start:]
 
 
-async def probe(days: int, extra: tuple[int, ...]) -> dict:
+async def probe(days: int, extra: tuple[int, ...], probes: list[dict]) -> None:
+    """Run the sweep, appending each result to `probes` as it happens.
+
+    **`probes` belongs to the caller on purpose.** The first version built the list
+    locally and returned it, so when the ring dropped the link mid-sweep the exception
+    took every captured frame with it -- the identical failure `probe_hr_log.py` had in
+    session 3, reproduced directly under a comment describing it. A caller-owned list
+    means a partial capture survives whatever happens next, and a partial capture of a
+    protocol nobody has documented is worth a great deal more than nothing.
+    """
     device = await BleakScanner.find_device_by_address(
         R06.address, timeout=SCAN_TIMEOUT_S
     )
@@ -138,7 +147,6 @@ async def probe(days: int, extra: tuple[int, ...]) -> dict:
         raise RuntimeError(f"{R06.name} not found - is it on your finger and awake?")
 
     candidates = list(CANDIDATES) + [(op, "supplied with --extra") for op in extra]
-    probes: list[dict] = []
 
     async with BleakClient(device, timeout=CONNECT_TIMEOUT_S) as client:
         log.info("connected to %s", R06.name)
@@ -185,21 +193,33 @@ async def probe(days: int, extra: tuple[int, ...]) -> dict:
                         log.info("%s: write rejected (%s)", label, type(exc).__name__)
                         entry["write_error"] = repr(exc)
                         probes.append(entry)
+                        # A single refused write is a result. A refused write on a client
+                        # that is no longer connected is noise, and the first run of this
+                        # tool logged eight of them after the ring dropped the link.
+                        # Stop rather than filling the capture with disconnected errors.
+                        if not client.is_connected:
+                            log.warning("ring disconnected - stopping the sweep here")
+                            return
                         continue
 
                     entry["frames"] = await collector.drain(REPLY_QUIET_S, REPLY_CAP_S)
                     log.info("%s -> %d frame(s)", label, len(entry["frames"]))
                     probes.append(entry)
 
-        await client.stop_notify(UART_TX_CHAR_UUID)
-        await client.stop_notify(BULK_TX_CHAR_UUID)
+                    # A short pause between writes. The first run dropped the link partway
+                    # through a rapid sweep; whether that was the cause is unproven, but
+                    # 300 ms across twenty probes costs six seconds and the alternative
+                    # costs the whole capture.
+                    await asyncio.sleep(0.3)
 
-    return {
-        "ring": {"name": R06.name, "address": R06.address},
-        "captured_utc": datetime.now(timezone.utc).isoformat(),
-        "note": "Reconnaissance for R-008. Nothing here is parsed.",
-        "probes": probes,
-    }
+        # Teardown must never be able to lose a capture. A client that dropped mid-sweep
+        # raises "Service Discovery has not been performed yet" here, which crashed the
+        # first run after the interesting frames had already arrived.
+        for char in (UART_TX_CHAR_UUID, BULK_TX_CHAR_UUID):
+            try:
+                await client.stop_notify(char)
+            except Exception as exc:  # noqa: BLE001 - teardown is best effort
+                log.debug("stop_notify(%s) failed: %s", char[:8], type(exc).__name__)
 
 
 def summarise(capture: dict) -> None:
@@ -246,9 +266,18 @@ async def main() -> int:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     out = args.out or Path("protocol/fixtures") / f"sleep_probe_{stamp}.json"
 
-    capture: dict = {"probes": []}
+    probes: list[dict] = []
+    capture: dict = {
+        "ring": {"name": R06.name, "address": R06.address},
+        "captured_utc": datetime.now(timezone.utc).isoformat(),
+        "note": "Reconnaissance for R-008. Nothing here is parsed.",
+        "probes": probes,
+    }
     try:
-        capture = await probe(args.days, extra)
+        await probe(args.days, extra, probes)
+    except Exception as exc:  # noqa: BLE001 - record it, then save what we have
+        log.error("sweep aborted: %r", exc)
+        capture["aborted"] = repr(exc)
     finally:
         # Persistence in a finally, deliberately. Session 3 lost two captures to an
         # exception escaping before the write - the exact failure the tool existed to
