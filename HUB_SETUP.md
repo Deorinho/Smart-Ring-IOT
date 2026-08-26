@@ -725,9 +725,18 @@ remote, unattended, and running the least-reviewed code in the project.
 
 ### At-rest encryption: a regression you are choosing
 
-The `/srv/ravenx` migration (R-018, session 8) moves `ring.db` **out of the encrypted
-home**. That is a deliberate trade and it should be recorded as one rather than
-discovered later.
+**Correction, 2026-08-26: this section was wrong and the trade was never made.**
+
+The `/srv/ravenx` migration moves `ring.db` out of the encrypted *home*, and the
+original text below concluded that at-rest protection was therefore lost. It is not: the
+**whole disk is LUKS-encrypted**, discovered when the hub failed to come back from a
+reboot and turned out to be sitting at a passphrase prompt. `/srv` is on that disk.
+`ring.db` is as encrypted at rest as it ever was, and the migration cost nothing here.
+
+What the discovery *did* reveal is a harder limit, recorded as R-020: **this hub cannot
+boot unattended at all.** Full-disk encryption blocks the boot before systemd exists, so
+no amount of unit-file work reaches it. The reasoning kept below is still the right
+reasoning for a box without full-disk encryption; it simply does not describe this one.
 
 What is actually lost is narrow: eCryptfs protects data when the machine is **off**. This
 hub is powered on essentially always, and while it runs, the home is decrypted whenever
