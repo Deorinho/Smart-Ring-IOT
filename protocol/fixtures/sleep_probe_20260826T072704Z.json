@@ -1,0 +1,648 @@
+{
+  "ring": {
+    "name": "R06_D29C",
+    "address": "81:5F:4A:87:D2:9C"
+  },
+  "captured_utc": "2026-08-26T07:27:04.435801+00:00",
+  "note": "Reconnaissance for R-008. Nothing here is parsed.",
+  "probes": [
+    {
+      "opcode": 39,
+      "why": "commonly cited for the Colmi family's sleep/big-data request",
+      "day_offset": 0,
+      "requested_utc": "2026-08-26T00:00:00+00:00",
+      "written_on": "uart",
+      "sent_hex": "27 80 2c 8e 6a 00 00 00 00 00 00 00 00 00 00 cb",
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:14.833509+00:00",
+          "hex": "a7 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 95",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 167
+        }
+      ]
+    },
+    {
+      "opcode": 39,
+      "why": "commonly cited for the Colmi family's sleep/big-data request",
+      "day_offset": 0,
+      "requested_utc": "2026-08-26T00:00:00+00:00",
+      "written_on": "bulk",
+      "sent_hex": "27 80 2c 8e 6a 00 00 00 00 00 00 00 00 00 00 cb",
+      "frames": []
+    },
+    {
+      "opcode": 39,
+      "why": "commonly cited for the Colmi family's sleep/big-data request",
+      "day_offset": 1,
+      "requested_utc": "2026-08-25T00:00:00+00:00",
+      "written_on": "uart",
+      "sent_hex": "27 00 db 8c 6a 00 00 00 00 00 00 00 00 00 00 f8",
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:18.587580+00:00",
+          "hex": "a7 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 95",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 167
+        }
+      ]
+    },
+    {
+      "opcode": 39,
+      "why": "commonly cited for the Colmi family's sleep/big-data request",
+      "day_offset": 1,
+      "requested_utc": "2026-08-25T00:00:00+00:00",
+      "written_on": "bulk",
+      "sent_hex": "27 00 db 8c 6a 00 00 00 00 00 00 00 00 00 00 f8",
+      "frames": []
+    },
+    {
+      "opcode": 188,
+      "why": "the big-data opcode reported for R0x rings; expected on BULK if anywhere",
+      "day_offset": 0,
+      "requested_utc": "2026-08-26T00:00:00+00:00",
+      "written_on": "uart",
+      "sent_hex": "bc 80 2c 8e 6a 00 00 00 00 00 00 00 00 00 00 60",
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:22.292504+00:00",
+          "hex": "bc ee 00 00 00 00 00 00 00 00 00 00 00 00 00 aa",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 188
+        }
+      ]
+    },
+    {
+      "opcode": 188,
+      "why": "the big-data opcode reported for R0x rings; expected on BULK if anywhere",
+      "day_offset": 0,
+      "requested_utc": "2026-08-26T00:00:00+00:00",
+      "written_on": "bulk",
+      "sent_hex": "bc 80 2c 8e 6a 00 00 00 00 00 00 00 00 00 00 60",
+      "frames": []
+    },
+    {
+      "opcode": 188,
+      "why": "the big-data opcode reported for R0x rings; expected on BULK if anywhere",
+      "day_offset": 1,
+      "requested_utc": "2026-08-25T00:00:00+00:00",
+      "written_on": "uart",
+      "sent_hex": "bc 00 db 8c 6a 00 00 00 00 00 00 00 00 00 00 8d",
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:26.522570+00:00",
+          "hex": "bc ee 00 00 00 00 00 00 00 00 00 00 00 00 00 aa",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 188
+        }
+      ]
+    },
+    {
+      "opcode": 188,
+      "why": "the big-data opcode reported for R0x rings; expected on BULK if anywhere",
+      "day_offset": 1,
+      "requested_utc": "2026-08-25T00:00:00+00:00",
+      "written_on": "bulk",
+      "sent_hex": "bc 00 db 8c 6a 00 00 00 00 00 00 00 00 00 00 8d",
+      "frames": []
+    },
+    {
+      "opcode": 21,
+      "why": "the HR log opcode. If sleep shares the log's day addressing it may answer here with an unfamiliar sub_type rather than the 0xFF sentinel",
+      "day_offset": 0,
+      "requested_utc": "2026-08-26T00:00:00+00:00",
+      "written_on": "uart",
+      "sent_hex": "15 80 2c 8e 6a 00 00 00 00 00 00 00 00 00 00 b9",
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:30.729602+00:00",
+          "hex": "15 00 18 05 00 00 00 00 00 00 00 00 00 00 00 32",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:30.730058+00:00",
+          "hex": "15 01 80 2c 8e 6a 65 00 00 00 00 00 4b 00 00 6a",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:30.977691+00:00",
+          "hex": "15 02 00 00 00 48 00 00 00 00 00 5b 00 00 00 ba",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:30.978153+00:00",
+          "hex": "15 03 00 00 6a 00 00 00 00 00 6e 00 00 00 00 f0",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:31.224620+00:00",
+          "hex": "15 04 00 57 00 00 00 00 00 5a 00 00 00 00 00 ca",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:31.225070+00:00",
+          "hex": "15 05 5d 00 00 00 00 00 6d 00 00 00 00 00 5a 3e",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:31.473934+00:00",
+          "hex": "15 06 00 00 00 00 00 6a 00 00 00 00 00 63 00 e8",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:31.474486+00:00",
+          "hex": "15 07 00 00 00 00 6e 00 00 00 00 00 51 00 00 db",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:31.596690+00:00",
+          "hex": "15 08 00 00 00 00 00 00 00 00 00 00 00 00 00 1d",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:31.719528+00:00",
+          "hex": "15 09 00 00 00 00 00 00 00 00 00 00 00 00 00 1e",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:31.967699+00:00",
+          "hex": "15 0a 00 00 00 00 00 00 00 00 00 00 00 00 00 1f",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:31.968173+00:00",
+          "hex": "15 0b 00 00 00 00 00 00 00 00 00 00 00 00 00 20",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:32.091698+00:00",
+          "hex": "15 0c 00 00 00 00 00 00 00 00 00 00 00 00 00 21",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:32.092153+00:00",
+          "hex": "15 0d 00 00 00 00 00 00 00 00 00 00 00 00 00 22",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:32.092816+00:00",
+          "hex": "15 0e 00 00 00 00 00 00 00 00 00 00 00 00 00 23",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:32.093697+00:00",
+          "hex": "15 0f 00 00 00 00 00 00 00 00 00 00 00 00 00 24",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:32.214650+00:00",
+          "hex": "15 10 00 00 00 00 00 00 00 00 00 00 00 00 00 25",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:32.215130+00:00",
+          "hex": "15 11 00 00 00 00 00 00 00 00 00 00 00 00 00 26",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:32.462683+00:00",
+          "hex": "15 12 00 00 00 00 00 00 00 00 00 00 00 00 00 27",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:32.463192+00:00",
+          "hex": "15 13 00 00 00 00 00 00 00 00 00 00 00 00 00 28",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:32.463846+00:00",
+          "hex": "15 14 00 00 00 00 00 00 00 00 00 00 00 00 00 29",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:32.464658+00:00",
+          "hex": "15 15 00 00 00 00 00 00 00 00 00 00 00 00 00 2a",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:32.586719+00:00",
+          "hex": "15 16 00 00 00 00 00 00 00 00 00 00 00 00 00 2b",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:32.587173+00:00",
+          "hex": "15 17 00 00 00 00 00 00 00 00 00 00 00 00 00 2c",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        }
+      ]
+    },
+    {
+      "opcode": 21,
+      "why": "the HR log opcode. If sleep shares the log's day addressing it may answer here with an unfamiliar sub_type rather than the 0xFF sentinel",
+      "day_offset": 0,
+      "requested_utc": "2026-08-26T00:00:00+00:00",
+      "written_on": "bulk",
+      "sent_hex": "15 80 2c 8e 6a 00 00 00 00 00 00 00 00 00 00 b9",
+      "frames": []
+    },
+    {
+      "opcode": 21,
+      "why": "the HR log opcode. If sleep shares the log's day addressing it may answer here with an unfamiliar sub_type rather than the 0xFF sentinel",
+      "day_offset": 1,
+      "requested_utc": "2026-08-25T00:00:00+00:00",
+      "written_on": "uart",
+      "sent_hex": "15 00 db 8c 6a 00 00 00 00 00 00 00 00 00 00 e6",
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:36.917710+00:00",
+          "hex": "15 00 18 05 00 00 00 00 00 00 00 00 00 00 00 32",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:36.918164+00:00",
+          "hex": "15 01 00 db 8c 6a 58 00 00 00 00 00 00 00 00 3f",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:37.164655+00:00",
+          "hex": "15 02 00 00 00 55 00 00 00 00 00 62 00 00 00 ce",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:37.165105+00:00",
+          "hex": "15 03 00 00 5c 00 00 00 00 00 4d 00 00 00 00 c1",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:37.288686+00:00",
+          "hex": "15 04 00 69 00 00 00 00 00 51 00 00 00 00 00 d3",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:37.289183+00:00",
+          "hex": "15 05 52 00 00 00 00 00 5c 00 00 00 00 00 57 1f",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:37.289703+00:00",
+          "hex": "15 06 00 00 00 00 00 4b 00 00 00 00 00 42 00 a8",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:37.412690+00:00",
+          "hex": "15 07 00 00 00 00 3c 00 00 00 00 00 38 00 00 90",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:37.413170+00:00",
+          "hex": "15 08 00 00 00 35 00 00 00 00 00 3c 00 00 00 8e",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:37.536682+00:00",
+          "hex": "15 09 00 00 38 00 00 00 00 00 32 00 00 00 00 88",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:37.537147+00:00",
+          "hex": "15 0a 00 33 00 00 00 00 00 3a 00 00 00 00 00 8c",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:37.537664+00:00",
+          "hex": "15 0b 37 00 00 00 00 00 36 00 00 00 00 00 35 c2",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:37.539199+00:00",
+          "hex": "15 0c 00 00 00 00 00 32 00 00 00 00 00 3a 00 8d",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:37.659626+00:00",
+          "hex": "15 0d 00 00 00 00 63 00 00 00 00 00 43 00 00 c8",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:37.783683+00:00",
+          "hex": "15 0e 00 00 00 67 00 00 00 00 00 67 00 00 00 f1",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:37.784133+00:00",
+          "hex": "15 0f 00 00 71 00 00 00 00 00 43 00 00 00 00 d8",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:37.784878+00:00",
+          "hex": "15 10 00 35 00 00 00 00 00 35 00 00 00 00 00 8f",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:37.785431+00:00",
+          "hex": "15 11 34 00 00 00 00 00 3c 00 00 00 00 00 58 ee",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:37.907575+00:00",
+          "hex": "15 12 00 00 00 00 00 5c 00 00 00 00 00 5a 00 dd",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:38.154620+00:00",
+          "hex": "15 13 00 00 00 00 63 00 00 00 00 00 56 00 00 e1",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:38.155079+00:00",
+          "hex": "15 14 00 00 00 4b 00 00 00 00 00 60 00 00 00 d4",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:38.278580+00:00",
+          "hex": "15 15 00 00 5e 00 00 00 00 00 61 00 00 00 00 e9",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:38.402681+00:00",
+          "hex": "15 16 00 5f 00 00 00 00 00 6d 00 00 00 00 00 f7",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:38.403142+00:00",
+          "hex": "15 17 58 00 00 00 00 00 00 00 00 00 00 00 00 84",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        }
+      ]
+    },
+    {
+      "opcode": 21,
+      "why": "the HR log opcode. If sleep shares the log's day addressing it may answer here with an unfamiliar sub_type rather than the 0xFF sentinel",
+      "day_offset": 1,
+      "requested_utc": "2026-08-25T00:00:00+00:00",
+      "written_on": "bulk",
+      "sent_hex": "15 00 db 8c 6a 00 00 00 00 00 00 00 00 00 00 e6",
+      "frames": []
+    },
+    {
+      "opcode": 47,
+      "why": "seen unsolicited immediately before the clock ack in session 3 and never explained. Worth asking directly rather than waiting for it",
+      "day_offset": 0,
+      "requested_utc": "2026-08-26T00:00:00+00:00",
+      "written_on": "uart",
+      "sent_hex": "2f 80 2c 8e 6a 00 00 00 00 00 00 00 00 00 00 d3",
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:42.486638+00:00",
+          "hex": "af ee 00 00 00 00 00 00 00 00 00 00 00 00 00 9d",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 175
+        }
+      ]
+    },
+    {
+      "opcode": 47,
+      "why": "seen unsolicited immediately before the clock ack in session 3 and never explained. Worth asking directly rather than waiting for it",
+      "day_offset": 0,
+      "requested_utc": "2026-08-26T00:00:00+00:00",
+      "written_on": "bulk",
+      "sent_hex": "2f 80 2c 8e 6a 00 00 00 00 00 00 00 00 00 00 d3",
+      "frames": []
+    },
+    {
+      "opcode": 47,
+      "why": "seen unsolicited immediately before the clock ack in session 3 and never explained. Worth asking directly rather than waiting for it",
+      "day_offset": 1,
+      "requested_utc": "2026-08-25T00:00:00+00:00",
+      "written_on": "uart",
+      "sent_hex": "2f 00 db 8c 6a 00 00 00 00 00 00 00 00 00 00 00",
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:47.065645+00:00",
+          "hex": "af ee 00 00 00 00 00 00 00 00 00 00 00 00 00 9d",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 175
+        }
+      ]
+    },
+    {
+      "opcode": 47,
+      "why": "seen unsolicited immediately before the clock ack in session 3 and never explained. Worth asking directly rather than waiting for it",
+      "day_offset": 1,
+      "requested_utc": "2026-08-25T00:00:00+00:00",
+      "written_on": "bulk",
+      "sent_hex": "2f 00 db 8c 6a 00 00 00 00 00 00 00 00 00 00 00",
+      "frames": []
+    },
+    {
+      "opcode": 115,
+      "why": "the status push, known to arrive unbidden carrying battery state. A direct request may return a fuller status block",
+      "day_offset": 0,
+      "requested_utc": "2026-08-26T00:00:00+00:00",
+      "written_on": "uart",
+      "sent_hex": "73 80 2c 8e 6a 00 00 00 00 00 00 00 00 00 00 17",
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:50.901555+00:00",
+          "hex": "f3 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 e1",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 243
+        }
+      ]
+    },
+    {
+      "opcode": 115,
+      "why": "the status push, known to arrive unbidden carrying battery state. A direct request may return a fuller status block",
+      "day_offset": 0,
+      "requested_utc": "2026-08-26T00:00:00+00:00",
+      "written_on": "bulk",
+      "sent_hex": "73 80 2c 8e 6a 00 00 00 00 00 00 00 00 00 00 17",
+      "frames": []
+    },
+    {
+      "opcode": 115,
+      "why": "the status push, known to arrive unbidden carrying battery state. A direct request may return a fuller status block",
+      "day_offset": 1,
+      "requested_utc": "2026-08-25T00:00:00+00:00",
+      "written_on": "uart",
+      "sent_hex": "73 00 db 8c 6a 00 00 00 00 00 00 00 00 00 00 44",
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:27:55.356667+00:00",
+          "hex": "f3 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 e1",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 243
+        }
+      ]
+    },
+    {
+      "opcode": 115,
+      "why": "the status push, known to arrive unbidden carrying battery state. A direct request may return a fuller status block",
+      "day_offset": 1,
+      "requested_utc": "2026-08-25T00:00:00+00:00",
+      "written_on": "bulk",
+      "sent_hex": "73 00 db 8c 6a 00 00 00 00 00 00 00 00 00 00 44",
+      "frames": []
+    }
+  ]
+}
