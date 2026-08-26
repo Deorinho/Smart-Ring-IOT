@@ -39,7 +39,12 @@ Environment=PYTHONUNBUFFERED=1
 # which is a sudo call rather than a file write.
 NoNewPrivileges=no
 PrivateTmp=yes
-ProtectSystem=strict
+# `full`, not `strict`. strict makes the ENTIRE filesystem read-only apart from
+# /dev, /proc and /sys -- including /run, where sudo writes its timestamp. The Sync
+# button shells out to sudo, so strict broke it. full still gives read-only /usr,
+# /boot and /etc, which is the protection that matters for a service that should
+# never modify the system.
+ProtectSystem=full
 ProtectHome=yes
 ReadWritePaths=/srv/ravenx/data
 ProtectKernelTunables=yes

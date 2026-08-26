@@ -14,4 +14,11 @@
 # NOPASSWD is required because the dashboard runs unattended with no tty. `sudo -n`
 # in hub/api.py fails immediately rather than hanging if this file is missing.
 
-warlock ALL=(root) NOPASSWD: /usr/bin/systemctl start ring-sync-now.service
+# The argv must match EXACTLY, --no-block included. sudoers compares the whole
+# command line, so omitting a flag the caller actually passes is a silent refusal
+# that surfaces as a 503 from the dashboard and nothing in the sudo log.
+#
+# --no-block is not optional on the caller's side: `systemctl start` on a oneshot
+# unit blocks until the unit finishes, roughly 25 seconds of radio time, and the
+# API is built to answer 202 immediately and let the phone poll.
+warlock ALL=(root) NOPASSWD: /usr/bin/systemctl start --no-block ring-sync-now.service
