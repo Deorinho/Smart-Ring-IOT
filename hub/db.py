@@ -222,6 +222,111 @@ def recent_sync_runs(conn: sqlite3.Connection, limit: int = 10) -> list[sqlite3.
     ).fetchall()
 
 
+# --- Events: sleep sessions and workouts -----------------------------------
+# The `events` + `event_stages` pair exists because CLAUDE.md's storage rule draws a
+# line: scalar time series go in `samples`, but a thing with a start, an end and
+# internal structure gets its own table rather than being crushed into scalar rows.
+# A night of sleep is the first real user of that decision.
+
+
+def insert_event(
+    conn: sqlite3.Connection,
+    source_id: int,
+    kind: str,
+    start_utc: str,
+    end_utc: str | None = None,
+) -> int | None:
+    """Store one structured event. Returns its id, or None if it already existed.
+
+    Idempotent on `(source_id, kind, start_utc)`, the same way `samples` is idempotent on
+    its primary key -- re-ingesting a night is a no-op rather than a duplicate. Returning
+    None rather than raising makes "did this add anything?" answerable by the caller
+    without a read-then-write race.
+    """
+    cur = conn.execute(
+        "INSERT OR IGNORE INTO events (source_id, kind, start_utc, end_utc)"
+        " VALUES (?, ?, ?, ?)",
+        (source_id, kind, start_utc, end_utc),
+    )
+    conn.commit()
+    return int(cur.lastrowid) if cur.rowcount else None
+
+
+def event_id(
+    conn: sqlite3.Connection, source_id: int, kind: str, start_utc: str
+) -> int | None:
+    row = conn.execute(
+        "SELECT id FROM events WHERE source_id = ? AND kind = ? AND start_utc = ?",
+        (source_id, kind, start_utc),
+    ).fetchone()
+    return int(row["id"]) if row else None
+
+
+def replace_event_stages(
+    conn: sqlite3.Connection,
+    event_id_: int,
+    stages: Iterable[tuple[str, str, str]],
+) -> int:
+    """Set an event's stage sequence to exactly `stages`. Returns rows written.
+
+    Each stage is `(stage, start_utc, end_utc)`, in order; `seq` is assigned from that
+    order and is what makes the sequence reconstructable.
+
+    **Replace, not append.** Stages are a derived interpretation of raw frames, and the
+    sleep parser will change -- that is the whole premise of keeping `raw_payloads`
+    forever. Appending would silently interleave two generations of parser output into
+    one night, which reads as corrupt data rather than as a re-parse. Deleting first
+    means re-parsing history is safe by construction, the same guarantee `INSERT OR
+    IGNORE` gives the scalar path.
+    """
+    rows = [
+        (event_id_, seq, stage, start, end)
+        for seq, (stage, start, end) in enumerate(stages)
+    ]
+    conn.execute("DELETE FROM event_stages WHERE event_id = ?", (event_id_,))
+    if rows:
+        conn.executemany(
+            "INSERT INTO event_stages (event_id, seq, stage, start_utc, end_utc)"
+            " VALUES (?, ?, ?, ?, ?)",
+            rows,
+        )
+    conn.commit()
+    return len(rows)
+
+
+def events_between(
+    conn: sqlite3.Connection, kind: str, start_utc: str, end_utc: str
+) -> list[sqlite3.Row]:
+    """Events of one kind overlapping a window, oldest first.
+
+    Overlap rather than containment: a sleep session starting at 23:40 belongs to the
+    night you ask for even though it began on the previous calendar day. Asking only for
+    events that start inside the window would drop exactly the sessions people care
+    about most.
+    """
+    return conn.execute(
+        "SELECT * FROM events WHERE kind = ? AND start_utc < ?"
+        " AND (end_utc IS NULL OR end_utc > ?) ORDER BY start_utc",
+        (kind, end_utc, start_utc),
+    ).fetchall()
+
+
+def event_stages(conn: sqlite3.Connection, event_id_: int) -> list[sqlite3.Row]:
+    return conn.execute(
+        "SELECT seq, stage, start_utc, end_utc FROM event_stages"
+        " WHERE event_id = ? ORDER BY seq",
+        (event_id_,),
+    ).fetchall()
+
+
+def latest_event(conn: sqlite3.Connection, kind: str) -> sqlite3.Row | None:
+    """Most recent event of a kind - what the dashboard's Last night card needs."""
+    return conn.execute(
+        "SELECT * FROM events WHERE kind = ? ORDER BY start_utc DESC LIMIT 1",
+        (kind,),
+    ).fetchone()
+
+
 # --- Raw payloads ----------------------------------------------------------
 def store_raw_payloads(
     conn: sqlite3.Connection,
