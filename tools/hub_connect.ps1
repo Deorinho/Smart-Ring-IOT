@@ -11,7 +11,7 @@
 param(
     [string]$HubUser = 'warlock',
     [string]$HubHost,
-    [string]$RemoteDir = '~/Projects/RavenXSmartRing-IOT',
+    [string]$RemoteDir = '/srv/ravenx/repo',
     [switch]$NoSweep
 )
 
