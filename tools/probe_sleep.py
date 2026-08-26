@@ -49,15 +49,29 @@ log = logging.getLogger("probe_sleep")
 
 # Candidate opcodes, each with the reason it earns a write. Cheap and safe things first,
 # so a ring that drops the link early still leaves useful evidence behind.
+# Rewritten 2026-08-26 from the opcode sweep rather than from upstream folklore.
+#
+# The first candidate list came from what other projects cite, and all four opcodes
+# turned out not to exist on this firmware (0x27, 0xBC, 0x2F, 0x73 all answered 0xEE).
+# These come from evidence instead: `tools/sweep_opcodes.py` sent every opcode a ZERO
+# payload -- a timestamp of 0, i.e. 1 January 1970 -- and these answered with `0xFF` in
+# byte[1], which is the HR log's confirmed no-data sentinel.
+#
+# An opcode that says "no data for that day" when asked about 1970 is a day-addressed
+# log query. 0x15 is the known heart-rate log and behaves identically, which is what
+# makes the inference solid rather than hopeful. One of the others is very likely sleep.
 CANDIDATES: tuple[tuple[int, str], ...] = (
-    (0x27, "commonly cited for the Colmi family's sleep/big-data request"),
-    (0xBC, "the big-data opcode reported for R0x rings; expected on BULK if anywhere"),
-    (0x15, "the HR log opcode. If sleep shares the log's day addressing it may answer"
-           " here with an unfamiliar sub_type rather than the 0xFF sentinel"),
-    (0x2F, "seen unsolicited immediately before the clock ack in session 3 and never"
-           " explained. Worth asking directly rather than waiting for it"),
-    (0x73, "the status push, known to arrive unbidden carrying battery state. A direct"
-           " request may return a fuller status block"),
+    (0x14, "answered 0xFF ff ff ff to a zero payload -- day-addressed, and the four-byte"
+           " sentinel run hints at a wider record than the HR log's single byte"),
+    (0x37, "answered 0xFF to a zero payload; day-addressed log, contents unknown"),
+    (0x39, "answered 0xFF to a zero payload; day-addressed log, contents unknown"),
+    (0x44, "answered 0xFF to a zero payload; day-addressed log, contents unknown"),
+    (0x15, "the confirmed HR log. Included as a CONTROL -- it must return a real burst"
+           " for the same day, or the request shape itself is wrong"),
+    (0x3C, "returned `3c 00 04` to a zero payload. Not a sentinel and not empty, so it"
+           " carries something; worth asking with a real day"),
+    (0x48, "returned a full payload to a zero request, so it is not day-addressed."
+           " Included to capture it properly rather than to find sleep"),
 )
 
 # Opcodes known or suspected to MUTATE ring state. Never probed.
@@ -202,7 +216,22 @@ async def probe(days: int, extra: tuple[int, ...], probes: list[dict]) -> None:
                             return
                         continue
 
-                    entry["frames"] = await collector.drain(REPLY_QUIET_S, REPLY_CAP_S)
+                    frames = await collector.drain(REPLY_QUIET_S, REPLY_CAP_S)
+
+                    # Attribute by CONTENT, not by timing. Replies are self-identifying:
+                    # byte[0] echoes the opcode on success and carries op|0x80 on an
+                    # unsupported command. The opcode sweep learned this the hard way --
+                    # a reply slower than the wait window landed in the next opcode's
+                    # slot and seven frames were credited to the wrong command, which
+                    # made silent opcodes look answered and vice versa.
+                    mine = [f for f in frames if f["byte0"] in (opcode, opcode | 0x80)]
+                    stray = [f for f in frames if f not in mine]
+                    entry["frames"] = mine
+                    if stray:
+                        # Kept, not discarded: a frame belonging to no request is either
+                        # a late reply or an unsolicited push, and both are worth having.
+                        entry["stray_frames"] = stray
+                        log.info("%s: %d stray frame(s) held aside", label, len(stray))
                     log.info("%s -> %d frame(s)", label, len(entry["frames"]))
                     probes.append(entry)
 

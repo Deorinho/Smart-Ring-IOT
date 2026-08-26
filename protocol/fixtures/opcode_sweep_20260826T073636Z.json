@@ -1,0 +1,1263 @@
+{
+  "ring": {
+    "name": "R06_D29C",
+    "address": "81:5F:4A:87:D2:9C"
+  },
+  "captured_utc": "2026-08-26T07:36:36.313847+00:00",
+  "range": [
+    16,
+    240
+  ],
+  "note": "Opcode existence sweep. Unsupported = reply byte0 == op|0x80, byte1 == 0xEE.",
+  "results": [
+    {
+      "opcode": 16,
+      "verdict": "supported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:36:45.108589+00:00",
+          "hex": "10 00 00 00 00 00 00 00 00 00 00 00 00 00 00 10",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 16
+        }
+      ]
+    },
+    {
+      "opcode": 17,
+      "verdict": "silent",
+      "n_frames": 0,
+      "frames": []
+    },
+    {
+      "opcode": 18,
+      "verdict": "supported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:36:46.345647+00:00",
+          "hex": "91 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 7f",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 145
+        }
+      ]
+    },
+    {
+      "opcode": 19,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:36:46.653475+00:00",
+          "hex": "93 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 81",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 147
+        }
+      ]
+    },
+    {
+      "opcode": 20,
+      "verdict": "supported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:36:46.994607+00:00",
+          "hex": "14 ff ff ff ff 00 00 00 00 00 00 00 00 00 00 10",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 20
+        }
+      ]
+    },
+    {
+      "opcode": 21,
+      "verdict": "supported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:36:47.335622+00:00",
+          "hex": "15 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 14",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        }
+      ]
+    },
+    {
+      "opcode": 22,
+      "verdict": "skipped",
+      "why": "rewrites the HR logging policy"
+    },
+    {
+      "opcode": 23,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:36:47.677615+00:00",
+          "hex": "97 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 85",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 151
+        }
+      ]
+    },
+    {
+      "opcode": 24,
+      "verdict": "supported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:36:48.018618+00:00",
+          "hex": "18 00 00 00 00 00 00 00 00 00 00 00 00 00 00 18",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 24
+        }
+      ]
+    },
+    {
+      "opcode": 25,
+      "verdict": "silent",
+      "n_frames": 0,
+      "frames": []
+    },
+    {
+      "opcode": 26,
+      "verdict": "silent",
+      "n_frames": 0,
+      "frames": []
+    },
+    {
+      "opcode": 27,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:36:50.260629+00:00",
+          "hex": "9b ee 00 00 00 00 00 00 00 00 00 00 00 00 00 89",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 155
+        }
+      ]
+    },
+    {
+      "opcode": 28,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:36:50.602491+00:00",
+          "hex": "9c ee 00 00 00 00 00 00 00 00 00 00 00 00 00 8a",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 156
+        }
+      ]
+    },
+    {
+      "opcode": 29,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:36:50.943628+00:00",
+          "hex": "9d ee 00 00 00 00 00 00 00 00 00 00 00 00 00 8b",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 157
+        }
+      ]
+    },
+    {
+      "opcode": 30,
+      "verdict": "silent",
+      "n_frames": 0,
+      "frames": []
+    },
+    {
+      "opcode": 31,
+      "verdict": "silent",
+      "n_frames": 0,
+      "frames": []
+    },
+    {
+      "opcode": 32,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:36:53.088528+00:00",
+          "hex": "a0 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 8e",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 160
+        }
+      ]
+    },
+    {
+      "opcode": 33,
+      "verdict": "supported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:36:53.429633+00:00",
+          "hex": "21 00 00 00 00 00 00 00 00 00 00 00 00 00 00 21",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 33
+        }
+      ]
+    },
+    {
+      "opcode": 34,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:36:53.770601+00:00",
+          "hex": "a2 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 90",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 162
+        }
+      ]
+    },
+    {
+      "opcode": 35,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:36:54.112634+00:00",
+          "hex": "a3 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 91",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 163
+        }
+      ]
+    },
+    {
+      "opcode": 36,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:36:54.453613+00:00",
+          "hex": "a4 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 92",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 164
+        }
+      ]
+    },
+    {
+      "opcode": 37,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:36:54.848769+00:00",
+          "hex": "a5 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 93",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 165
+        }
+      ]
+    },
+    {
+      "opcode": 38,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:36:55.379619+00:00",
+          "hex": "a6 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 94",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 166
+        }
+      ]
+    },
+    {
+      "opcode": 39,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:36:55.874604+00:00",
+          "hex": "a7 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 95",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 167
+        }
+      ]
+    },
+    {
+      "opcode": 40,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:36:56.988646+00:00",
+          "hex": "a8 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 96",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 168
+        }
+      ]
+    },
+    {
+      "opcode": 41,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:36:57.978624+00:00",
+          "hex": "a9 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 97",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 169
+        }
+      ]
+    },
+    {
+      "opcode": 42,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:36:58.968621+00:00",
+          "hex": "aa ee 00 00 00 00 00 00 00 00 00 00 00 00 00 98",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 170
+        }
+      ]
+    },
+    {
+      "opcode": 43,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:00.081550+00:00",
+          "hex": "ab ee 00 00 00 00 00 00 00 00 00 00 00 00 00 99",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 171
+        }
+      ]
+    },
+    {
+      "opcode": 44,
+      "verdict": "silent",
+      "n_frames": 0,
+      "frames": []
+    },
+    {
+      "opcode": 45,
+      "verdict": "supported",
+      "n_frames": 2,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:01.319611+00:00",
+          "hex": "2c 00 00 00 00 00 00 00 00 00 00 00 00 00 00 2c",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 44
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:01.566645+00:00",
+          "hex": "ad ee 00 00 00 00 00 00 00 00 00 00 00 00 00 9b",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 173
+        }
+      ]
+    },
+    {
+      "opcode": 46,
+      "verdict": "silent",
+      "n_frames": 0,
+      "frames": []
+    },
+    {
+      "opcode": 47,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:03.175629+00:00",
+          "hex": "af ee 00 00 00 00 00 00 00 00 00 00 00 00 00 9d",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 175
+        }
+      ]
+    },
+    {
+      "opcode": 48,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:04.289556+00:00",
+          "hex": "b0 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 9e",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 176
+        }
+      ]
+    },
+    {
+      "opcode": 49,
+      "verdict": "supported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:05.279613+00:00",
+          "hex": "31 00 00 00 00 00 00 00 00 00 00 00 00 00 00 31",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 49
+        }
+      ]
+    },
+    {
+      "opcode": 50,
+      "verdict": "silent",
+      "n_frames": 0,
+      "frames": []
+    },
+    {
+      "opcode": 51,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:06.889602+00:00",
+          "hex": "b3 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 a1",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 179
+        }
+      ]
+    },
+    {
+      "opcode": 52,
+      "verdict": "silent",
+      "n_frames": 0,
+      "frames": []
+    },
+    {
+      "opcode": 53,
+      "verdict": "supported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:08.125621+00:00",
+          "hex": "b4 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 a2",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 180
+        }
+      ]
+    },
+    {
+      "opcode": 54,
+      "verdict": "supported",
+      "n_frames": 2,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:08.620604+00:00",
+          "hex": "b5 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 a3",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 181
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:08.744613+00:00",
+          "hex": "36 00 00 00 00 00 00 00 00 00 00 00 00 00 00 36",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 54
+        }
+      ]
+    },
+    {
+      "opcode": 55,
+      "verdict": "supported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:09.115546+00:00",
+          "hex": "37 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 36",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 55
+        }
+      ]
+    },
+    {
+      "opcode": 56,
+      "verdict": "supported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:09.610704+00:00",
+          "hex": "38 00 00 00 00 00 00 00 00 00 00 00 00 00 00 38",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 56
+        }
+      ]
+    },
+    {
+      "opcode": 57,
+      "verdict": "supported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:10.600690+00:00",
+          "hex": "39 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 38",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 57
+        }
+      ]
+    },
+    {
+      "opcode": 58,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:11.590554+00:00",
+          "hex": "ba ee 00 00 00 00 00 00 00 00 00 00 00 00 00 a8",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 186
+        }
+      ]
+    },
+    {
+      "opcode": 59,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:12.580576+00:00",
+          "hex": "bb ee 00 00 00 00 00 00 00 00 00 00 00 00 00 a9",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 187
+        }
+      ]
+    },
+    {
+      "opcode": 60,
+      "verdict": "supported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:13.323567+00:00",
+          "hex": "3c 00 04 00 00 00 00 00 00 00 00 00 00 00 00 40",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 60
+        }
+      ]
+    },
+    {
+      "opcode": 61,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:14.313572+00:00",
+          "hex": "bd ee 00 00 00 00 00 00 00 00 00 00 00 00 00 ab",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 189
+        }
+      ]
+    },
+    {
+      "opcode": 62,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:15.303551+00:00",
+          "hex": "be ee 00 00 00 00 00 00 00 00 00 00 00 00 00 ac",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 190
+        }
+      ]
+    },
+    {
+      "opcode": 63,
+      "verdict": "silent",
+      "n_frames": 0,
+      "frames": []
+    },
+    {
+      "opcode": 64,
+      "verdict": "supported",
+      "n_frames": 2,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:16.540553+00:00",
+          "hex": "bf ee 00 00 00 00 00 00 00 00 00 00 00 00 00 ad",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 191
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:16.788588+00:00",
+          "hex": "c0 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 ae",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 192
+        }
+      ]
+    },
+    {
+      "opcode": 65,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:17.159566+00:00",
+          "hex": "c1 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 af",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 193
+        }
+      ]
+    },
+    {
+      "opcode": 66,
+      "verdict": "silent",
+      "n_frames": 0,
+      "frames": []
+    },
+    {
+      "opcode": 67,
+      "verdict": "supported",
+      "n_frames": 3,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:18.768719+00:00",
+          "hex": "c2 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 b0",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 194
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:18.769348+00:00",
+          "hex": "43 f0 01 00 00 00 00 00 00 00 00 00 00 00 00 34",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 67
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:18.769835+00:00",
+          "hex": "43 26 08 26 00 00 01 e6 55 b7 01 2f 01 00 00 bb",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 67
+        }
+      ]
+    },
+    {
+      "opcode": 68,
+      "verdict": "supported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:19.263550+00:00",
+          "hex": "44 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 43",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 68
+        }
+      ]
+    },
+    {
+      "opcode": 69,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:20.253562+00:00",
+          "hex": "c5 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 b3",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 197
+        }
+      ]
+    },
+    {
+      "opcode": 70,
+      "verdict": "supported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:21.243580+00:00",
+          "hex": "46 00 00 00 00 00 00 00 00 00 00 00 00 00 00 46",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 70
+        }
+      ]
+    },
+    {
+      "opcode": 71,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:22.233599+00:00",
+          "hex": "c7 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 b5",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 199
+        }
+      ]
+    },
+    {
+      "opcode": 72,
+      "verdict": "supported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:23.223565+00:00",
+          "hex": "48 00 06 e9 00 00 00 01 4d 0d 00 04 99 00 44 73",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 72
+        }
+      ]
+    },
+    {
+      "opcode": 73,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:24.213576+00:00",
+          "hex": "c9 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 b7",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 201
+        }
+      ]
+    },
+    {
+      "opcode": 74,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:25.203581+00:00",
+          "hex": "ca ee 00 00 00 00 00 00 00 00 00 00 00 00 00 b8",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 202
+        }
+      ]
+    },
+    {
+      "opcode": 75,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:26.193574+00:00",
+          "hex": "cb ee 00 00 00 00 00 00 00 00 00 00 00 00 00 b9",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 203
+        }
+      ]
+    },
+    {
+      "opcode": 76,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:27.306637+00:00",
+          "hex": "cc ee 00 00 00 00 00 00 00 00 00 00 00 00 00 ba",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 204
+        }
+      ]
+    },
+    {
+      "opcode": 77,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:28.296683+00:00",
+          "hex": "cd ee 00 00 00 00 00 00 00 00 00 00 00 00 00 bb",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 205
+        }
+      ]
+    },
+    {
+      "opcode": 78,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:29.286656+00:00",
+          "hex": "ce ee 00 00 00 00 00 00 00 00 00 00 00 00 00 bc",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 206
+        }
+      ]
+    },
+    {
+      "opcode": 79,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:30.276660+00:00",
+          "hex": "cf ee 00 00 00 00 00 00 00 00 00 00 00 00 00 bd",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 207
+        }
+      ]
+    },
+    {
+      "opcode": 80,
+      "verdict": "supported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:31.266840+00:00",
+          "hex": "d0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 d0",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 208
+        }
+      ]
+    },
+    {
+      "opcode": 81,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:32.256671+00:00",
+          "hex": "d1 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 bf",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 209
+        }
+      ]
+    },
+    {
+      "opcode": 82,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:33.246666+00:00",
+          "hex": "d2 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 c0",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 210
+        }
+      ]
+    },
+    {
+      "opcode": 83,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:34.236663+00:00",
+          "hex": "d3 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 c1",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 211
+        }
+      ]
+    },
+    {
+      "opcode": 84,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:35.226648+00:00",
+          "hex": "d4 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 c2",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 212
+        }
+      ]
+    },
+    {
+      "opcode": 85,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:36.216675+00:00",
+          "hex": "d5 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 c3",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 213
+        }
+      ]
+    },
+    {
+      "opcode": 86,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:37.206696+00:00",
+          "hex": "d6 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 c4",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 214
+        }
+      ]
+    },
+    {
+      "opcode": 87,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:38.196556+00:00",
+          "hex": "d7 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 c5",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 215
+        }
+      ]
+    },
+    {
+      "opcode": 88,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:39.186637+00:00",
+          "hex": "d8 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 c6",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 216
+        }
+      ]
+    },
+    {
+      "opcode": 89,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:40.176673+00:00",
+          "hex": "d9 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 c7",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 217
+        }
+      ]
+    },
+    {
+      "opcode": 90,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:41.166686+00:00",
+          "hex": "da ee 00 00 00 00 00 00 00 00 00 00 00 00 00 c8",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 218
+        }
+      ]
+    },
+    {
+      "opcode": 91,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:42.156695+00:00",
+          "hex": "db ee 00 00 00 00 00 00 00 00 00 00 00 00 00 c9",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 219
+        }
+      ]
+    },
+    {
+      "opcode": 92,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:43.146608+00:00",
+          "hex": "dc ee 00 00 00 00 00 00 00 00 00 00 00 00 00 ca",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 220
+        }
+      ]
+    },
+    {
+      "opcode": 93,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:44.136615+00:00",
+          "hex": "dd ee 00 00 00 00 00 00 00 00 00 00 00 00 00 cb",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 221
+        }
+      ]
+    },
+    {
+      "opcode": 94,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:45.126702+00:00",
+          "hex": "de ee 00 00 00 00 00 00 00 00 00 00 00 00 00 cc",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 222
+        }
+      ]
+    },
+    {
+      "opcode": 95,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:46.116753+00:00",
+          "hex": "df ee 00 00 00 00 00 00 00 00 00 00 00 00 00 cd",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 223
+        }
+      ]
+    },
+    {
+      "opcode": 96,
+      "verdict": "silent",
+      "n_frames": 0,
+      "frames": []
+    },
+    {
+      "opcode": 97,
+      "verdict": "silent",
+      "n_frames": 0,
+      "frames": []
+    },
+    {
+      "opcode": 98,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:48.715651+00:00",
+          "hex": "e2 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 d0",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 226
+        }
+      ]
+    },
+    {
+      "opcode": 99,
+      "verdict": "silent",
+      "n_frames": 0,
+      "frames": []
+    },
+    {
+      "opcode": 100,
+      "verdict": "supported",
+      "n_frames": 2,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:49.952652+00:00",
+          "hex": "e3 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 d1",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 227
+        },
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:50.076654+00:00",
+          "hex": "e4 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 d2",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 228
+        }
+      ]
+    },
+    {
+      "opcode": 101,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:50.447689+00:00",
+          "hex": "e5 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 d3",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 229
+        }
+      ]
+    },
+    {
+      "opcode": 102,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:50.942644+00:00",
+          "hex": "e6 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 d4",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 230
+        }
+      ]
+    },
+    {
+      "opcode": 103,
+      "verdict": "unsupported",
+      "n_frames": 1,
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:37:51.932677+00:00",
+          "hex": "e7 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 d5",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 231
+        }
+      ]
+    },
+    {
+      "opcode": 104,
+      "verdict": "silent",
+      "n_frames": 0,
+      "frames": []
+    },
+    {
+      "opcode": 105,
+      "verdict": "silent",
+      "n_frames": 0,
+      "frames": []
+    },
+    {
+      "opcode": 106,
+      "verdict": "write_error",
+      "error": "BleakError('Service Discovery has not been performed yet')"
+    }
+  ]
+}
