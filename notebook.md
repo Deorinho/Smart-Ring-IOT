@@ -1013,3 +1013,190 @@ claim this hub makes from here on.
 
 Stopgap in place: the units were started by hand and run fine while the home is
 decrypted. They will die again on the next reboot.
+
+## 2026-08-26 — Session 8: the hub finally survives a reboot, and why it still cannot boot
+
+**R-018 closed.** Repo, venv and data moved from `~/Projects` to `/srv/ravenx`, and all
+six unit files became system units with `User=warlock`. The dashboard, both timers and
+the on-demand sync now start at boot with nobody logged in, which had never once been
+true — the eCryptfs home meant systemd's user manager read an empty directory at boot
+and reached `default.target` in 471 ms having started nothing.
+
+### The migration itself was boring, which was the point
+
+Backup first and pulled off the hub. Clone rather than `mv`, so the old tree stayed as a
+rollback. Venv rebuilt at its final path rather than copied. Data verified with
+`tools/restore.py` before anything switched over. Eleven steps in `HUB_SETUP.md` §6b, and
+the only reason it went smoothly is that every one of them had a reason behind it.
+
+`ring-dashboard` also dropped from `--host 0.0.0.0` to `127.0.0.1`. Tailscale Serve
+proxies to localhost, so a loopback bind is sufficient — and it is enforced by the
+process rather than by a firewall rule someone can delete.
+
+### Three things broke, in order
+
+**The units installed were the wrong ones.** `/srv/ravenx/repo` was cloned from GitHub so
+it sat on `main`, while the system units lived on an unmerged branch. `cp ring-*.service`
+succeeded and quietly installed the *old user units* into `/etc/systemd/system/`, `%h`
+paths and all. Caught before `enable`, and only because the missing sudoers file threw a
+loud error beside it. A silent partial success is worse than a clean failure.
+
+**The sudoers rule did not match.** `sudo: a password is required`, surfacing as a 503
+from the dashboard with nothing in the sudo log. The rule read
+`systemctl start ring-sync-now.service` while `hub/api.py` sends
+`systemctl start --no-block ring-sync-now.service`. **sudoers compares the entire command
+line**, so a flag the caller passes and the rule omits is a silent refusal. `--no-block`
+had to stay on the caller's side: `systemctl start` on a oneshot unit blocks until it
+finishes, about 25 seconds, and the API answers 202 and lets the phone poll.
+
+Found alongside it: `ProtectSystem=strict` makes the whole filesystem read-only apart
+from `/dev`, `/proc` and `/sys` — including `/run`, where sudo writes its timestamp.
+Dropped to `full`, which keeps read-only `/usr`, `/boot` and `/etc`.
+
+### Then the reboot never came back
+
+Tailnet showed the hub offline, a LAN sweep found nothing, `hub_connect.ps1` gave up.
+Plugged in a monitor and the screen was sitting at a **LUKS passphrase prompt**.
+
+**The disk is full-disk encrypted, and nothing boots until a human types the key.** No
+network, no SSH, no services. That is a layer *below* R-018 and unreachable by unit
+files: the migration correctly fixed the login dependency, and this one blocks the boot
+before systemd exists. Logged as **R-020**.
+
+Three encryption layers had been stacked on this machine, and we had been peeling them
+without seeing the bottom one:
+
+```text
+LUKS full-disk   blocks the entire boot        found tonight, unfixed
+eCryptfs home    blocks systemd user units     fixed by this migration
+login session    (WiFi profile scoping)        ruled out
+```
+
+Kept as RISK rather than P1 because the hub is a laptop and its battery is a UPS, so
+brief outages do not reboot it. Every fix is worse than the problem: removing LUKS loses
+real at-rest encryption, a keyfile on `/boot` auto-unlocks and defeats the point, a 2014
+Air has no usable TPM, and Clevis/Tang needs a second always-on machine that does not
+exist. Plan reboots for when you are home.
+
+**It also corrected a claim written two days earlier.** `HUB_SETUP.md` §7b said the
+`/srv` move traded away at-rest encryption. It did not — `/srv` is on the LUKS volume, so
+`ring.db` is as encrypted as it ever was. A trade recorded that was never made.
+
+### Verified
+
+Dashboard active, both timers scheduled, `/api/alert` answering, and the Sync button
+pressed **from the phone** and completing: PWA → Tailscale Serve → FastAPI as a system
+unit → sudo → systemd → BLE → ring → SQLite → back to the dashboard. Every link, with no
+login anywhere in it.
+
+### Open after session 8
+
+- **R-005 still unverified.** `ring-sync.service` finally has a `bluetooth.target`
+  ordering that can apply — as a user unit that line was always inert — but the first
+  scheduled run on a booted machine is 08:02 and had not happened yet.
+- R-020: the hub cannot boot unattended, and will not.
+- The `.old` directories stay a week before deletion.
+
+## 2026-08-26 — Session 9: guessing replaced by a decision procedure
+
+Sleep is still unmapped and this session did not name its opcode. It did something more
+useful: it turned the search from folklore into a method, then paid for a safety rule
+with the ring's buffer.
+
+### Every opcode the internet suggests is absent from this firmware
+
+`tools/probe_sleep.py` asked five curated candidates on both vendor channels. Four
+returned exactly one frame:
+
+```text
+sent 0x27  ->  a7 ee 00 ...       0x27 | 0x80 = 0xa7
+sent 0xbc  ->  bc ee 00 ...       0xbc | 0x80 = 0xbc
+sent 0x2f  ->  af ee 00 ...       0x2f | 0x80 = 0xaf
+sent 0x73  ->  f3 ee 00 ...       0x73 | 0x80 = 0xf3
+sent 0x15  ->  15 00 18 05 ...    24 frames of real data
+```
+
+**An unsupported command is answered with the request opcode OR'd with 0x80, followed by
+`0xEE`.** A supported command echoes its opcode unchanged. All four checksums validate,
+so this is a deliberate response. Nothing upstream documents it.
+
+`0x27` and `0xbc` — the two most-cited sleep candidates for this ring family — do not
+exist here. Two older observations sharpened as well: `0x2f` and `0x73` were both seen
+arriving *unsolicited* in session 3, and the ring refuses both as requests. They are
+push-only. The ring talks; it does not listen on those.
+
+**The bulk service answered nothing, for any opcode**, which weakens the hypothesis
+carried since session 2 that sleep rides `de5bf728`.
+
+### The oracle, and what it cost to use badly
+
+`0xEE` means you can ask "does this opcode exist" and get an answer without understanding
+a byte of its payload. `tools/sweep_opcodes.py` walked 0x10–0x6a on that basis and found
+**14 implemented commands**, in useful groups:
+
+```text
+0xFF sentinel:  0x14  0x15  0x37  0x39  0x44
+zeros:          0x10  0x18  0x21  0x31  0x38  0x46
+payload:        0x3c -> 3c 00 04 ...
+                0x48 -> 48 00 06 e9 00 00 00 01 4d 0d 00 04 99 00 44
+```
+
+The sweep sent a **zero payload** — a timestamp of 0, meaning 1 January 1970 — so the
+`0xFF` group are day-addressed log queries correctly answering "no data for that day".
+`0x15` is the known heart-rate log and behaves identically, which makes the inference
+solid rather than hopeful. `0x14`, `0x37`, `0x39` and `0x44` are the sleep candidates
+now, and they came from the ring rather than from other people's repositories.
+
+### Then the next run failed its own control
+
+`0x15` returned the sentinel for a day it had answered with 24 frames seventeen minutes
+earlier. The sync log named the cause:
+
+```text
+03:14  sync   24 frames -> 15/47/44/46 samples     normal
+03:36  SWEEP  91 unknown opcodes, zero payloads
+03:48  sync   sensing policy drift: ring has enabled=False
+              1 frame -> 0 samples, every day
+```
+
+**The sweep disabled heart-rate logging and wiped the onboard buffer.** `0x16` is the
+known settings opcode and was in the refusal list, so **a second undocumented opcode also
+disables logging**, with a zero payload read as "off". Restoring the setting did not
+bring the days back, so the log was cleared rather than hidden — consistent with session
+3, where a factory ring with logging disabled returned the sentinel for every day.
+
+**`sync.py` caught and repaired it without being asked.** The read-before-write drift
+check, built in session 6 so that "any drift the hub didn't cause shows up in the log
+rather than as an unexplained battery cliff", detected `enabled=False` and wrote the
+policy back. A design decision earning its keep against a live protocol accident.
+
+**Cost: about one reading, plus the buffer-depth experiment.** The 03:14 sync had already
+stored 152 of 154 samples, so the hub's store was current and untouched. But `PLAN.md` §3
+was waiting until ~2026-08-29 to walk `day_offset` back and catch the first day to expire
+— the measurement that names the ceiling and the eviction policy at once. The buffer
+restarts from empty, so that is three weeks away again. Logged as **R-021** with the rule
+it earned: **no broad opcode sweeps. Probe named candidates with evidence behind them,
+and re-read the sensing policy after any unknown write.**
+
+### Two bugs in my own tools, both caught by their own output
+
+**A dropped link lost the first capture entirely.** `probe()` built its results list
+locally and returned it, so when the ring disconnected mid-sweep the exception took every
+frame with it — the identical failure `probe_hr_log.py` had in session 3, reproduced
+directly beneath a comment describing it. The list now belongs to the caller, and a
+partial capture survives whatever happens next.
+
+**Seven frames were credited to the wrong opcode.** A reply slower than the wait window
+landed in the next opcode's slot, making silent opcodes look answered and answered ones
+look silent. `CLAUDE.md` has recorded since session 2 that replies are self-identifying —
+`byte[0]` echoes the command — and timing-based attribution was built anyway. Frames are
+now matched by content.
+
+### Open after session 9
+
+- **The ring's buffer is empty.** Sleep cannot be probed until a night has been recorded.
+  A hard block until tomorrow, not a matter of effort.
+- `0x14`, `0x37`, `0x39`, `0x44` untested against a real day holding real data.
+- Which opcode disables logging is unknown. Narrowing it means small batches with a
+  policy read after each — a deliberate experiment, not a sweep.
+- 0x6b–0xf0 never probed, and will not be by sweeping.
