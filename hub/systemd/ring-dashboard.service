@@ -1,20 +1,17 @@
 # RavenX dashboard — read-only API + PWA.
 #
-# Install as a systemd USER unit so it needs no root:
-#     mkdir -p ~/.config/systemd/user
-#     cp hub/systemd/ring-dashboard.service ~/.config/systemd/user/
-#     systemctl --user daemon-reload
-#     systemctl --user enable --now ring-dashboard
-#     loginctl enable-linger $USER      # required, or it stops when you log out
-#     journalctl --user -u ring-dashboard -f
+# SYSTEM unit, not a user unit. See hub/systemd/README.md for why that distinction is
+# the whole point of this directory (Bug_Backlog R-018): /home/warlock is eCryptfs and
+# does not exist until someone logs in, so a user unit reading ~/.config starts nothing
+# at boot and every path under $HOME is unreadable while you are logged out.
 #
-# `enable-linger` is the step people miss. Without it the unit only runs while a login
-# session exists, which on a headless lid-closed hub means it dies when you close SSH.
+#     sudo cp hub/systemd/*.service hub/systemd/*.timer /etc/systemd/system/
+#     sudo systemctl daemon-reload
+#     sudo systemctl enable --now ring-dashboard
+#     journalctl -u ring-dashboard -f
 #
-# No Bluetooth dependency here on purpose: this process only reads SQLite. The BLE sync
-# service is separate and will need `After=bluetooth.target` plus tolerance for an
-# adapter that is not ready yet (Bug_Backlog R-005) — the stack initialises ~43 s into
-# boot on this machine.
+# No `loginctl enable-linger` anywhere. That was only ever a workaround for user units
+# and it never solved this; a system unit needs no login to exist.
 
 [Unit]
 Description=RavenX Smart Ring dashboard (FastAPI)
@@ -23,13 +20,41 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=%h/Projects/RavenXSmartRing-IOT
-ExecStart=%h/Projects/RavenXSmartRing-IOT/.venv/bin/uvicorn hub.api:app --host 0.0.0.0 --port 8000
+User=warlock
+Group=warlock
+WorkingDirectory=/srv/ravenx/repo
+ExecStart=/srv/ravenx/repo/.venv/bin/uvicorn hub.api:app --host 127.0.0.1 --port 8000
 Restart=on-failure
 RestartSec=5
-
-# The store lives outside the repo, so a git pull or clean can never touch it.
 Environment=PYTHONUNBUFFERED=1
 
+# 127.0.0.1, not 0.0.0.0. Tailscale Serve terminates TLS on the tailnet name and
+# proxies to localhost, so no external bind is needed — and a loopback bind is a
+# stronger guarantee than a firewall rule, because it is enforced by the process rather
+# than by a rule someone can delete. The LAN ufw rule was removed in session 7; this
+# closes the door it used to guard.
+
+# Hardening. This process only ever reads SQLite and serves static files, so almost
+# everything can be taken away from it. The one write it needs is the sync trigger,
+# which is a sudo call rather than a file write.
+NoNewPrivileges=no
+PrivateTmp=yes
+# `full`, not `strict`. strict makes the ENTIRE filesystem read-only apart from
+# /dev, /proc and /sys -- including /run, where sudo writes its timestamp. The Sync
+# button shells out to sudo, so strict broke it. full still gives read-only /usr,
+# /boot and /etc, which is the protection that matters for a service that should
+# never modify the system.
+ProtectSystem=full
+ProtectHome=yes
+ReadWritePaths=/srv/ravenx/data
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+
+# NoNewPrivileges is deliberately OFF: the dashboard's Sync button shells out to
+# `sudo systemctl start ring-sync-now.service`, and sudo cannot escalate under it.
+# The sudoers rule is scoped to exactly that one unit with no arguments — see
+# hub/systemd/ravenx-sudoers.
+
 [Install]
-WantedBy=default.target
+WantedBy=multi-user.target

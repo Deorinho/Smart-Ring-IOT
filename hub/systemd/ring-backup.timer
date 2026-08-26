@@ -1,16 +1,14 @@
-# 04:00 daily — after the 22:00 sync has landed and long before the 08:00 one.
-#
-# Persistent=true so a hub that was off at 04:00 backs up shortly after it returns,
-# rather than skipping a day silently.
+# Nightly at 04:00. Chosen to sit well away from every sync slot (08:00/14:00/22:00) so
+# a backup is never taken mid-write — though SQLite's backup API makes that safe anyway,
+# which is the entire reason tools/backup.py does not use cp.
 
 [Unit]
-Description=RavenX nightly backup schedule
+Description=RavenX Smart Ring nightly backup schedule
 
 [Timer]
 OnCalendar=*-*-* 04:00:00
 Persistent=true
 RandomizedDelaySec=300
-Unit=ring-backup.service
 
 [Install]
 WantedBy=timers.target
