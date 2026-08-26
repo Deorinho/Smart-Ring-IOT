@@ -103,6 +103,39 @@ def checksum(data: bytes) -> int:
     return sum(data[:CHECKSUM_INDEX]) & 0xFF
 
 
+# --- The unsupported-command reply -----------------------------------------
+# CONFIRMED 2026-08-26 against R06_D29C, and undocumented anywhere upstream.
+#
+# An opcode this firmware does not implement is answered with the request opcode OR'd
+# with 0x80, followed by 0xEE:
+#
+#     sent 0x27  ->  a7 ee 00 ...      0x27 | 0x80 = 0xa7
+#     sent 0xbc  ->  bc ee 00 ...      0xbc | 0x80 = 0xbc  (bit already set)
+#     sent 0x2f  ->  af ee 00 ...      0x2f | 0x80 = 0xaf
+#     sent 0x73  ->  f3 ee 00 ...      0x73 | 0x80 = 0xf3
+#
+# A SUPPORTED command echoes its opcode unchanged -- 0x15 replies with byte[0] = 0x15
+# and a 24-frame burst. So the high bit is the error flag and 0xEE is the reason code.
+# All four replies validate under the usual checksum, so this is a deliberate response
+# rather than noise.
+#
+# Two consequences worth keeping. **0x2f and 0x73 are push-only**: both were seen
+# arriving unsolicited in session 3, and the ring refuses them as requests -- it talks,
+# it does not listen. And this gives a decision procedure for opcode discovery, which
+# tools/sweep_opcodes.py uses: send, look for 0xEE, and you know whether a command
+# exists without understanding a byte of its payload.
+UNSUPPORTED_MARKER = 0xEE
+
+
+def is_unsupported(packet: bytes, requested: int) -> bool:
+    """True if `packet` is the ring's "I do not implement that" reply to `requested`."""
+    return (
+        len(packet) >= 2
+        and packet[0] == (requested | 0x80)
+        and packet[1] == UNSUPPORTED_MARKER
+    )
+
+
 def parse_command_id(packet: bytes) -> int:
     return packet[0]
 
