@@ -1,0 +1,388 @@
+{
+  "ring": {
+    "name": "R06_D29C",
+    "address": "81:5F:4A:87:D2:9C"
+  },
+  "captured_utc": "2026-08-26T07:44:52.843456+00:00",
+  "note": "Reconnaissance for R-008. Nothing here is parsed.",
+  "probes": [
+    {
+      "opcode": 20,
+      "why": "answered 0xFF ff ff ff to a zero payload -- day-addressed, and the four-byte sentinel run hints at a wider record than the HR log's single byte",
+      "day_offset": 0,
+      "requested_utc": "2026-08-26T00:00:00+00:00",
+      "written_on": "uart",
+      "sent_hex": "14 80 2c 8e 6a 00 00 00 00 00 00 00 00 00 00 b8",
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:45:02.918692+00:00",
+          "hex": "14 ff ff ff ff 00 00 00 00 00 00 00 00 00 00 10",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 20
+        }
+      ]
+    },
+    {
+      "opcode": 20,
+      "why": "answered 0xFF ff ff ff to a zero payload -- day-addressed, and the four-byte sentinel run hints at a wider record than the HR log's single byte",
+      "day_offset": 0,
+      "requested_utc": "2026-08-26T00:00:00+00:00",
+      "written_on": "bulk",
+      "sent_hex": "14 80 2c 8e 6a 00 00 00 00 00 00 00 00 00 00 b8",
+      "frames": []
+    },
+    {
+      "opcode": 20,
+      "why": "answered 0xFF ff ff ff to a zero payload -- day-addressed, and the four-byte sentinel run hints at a wider record than the HR log's single byte",
+      "day_offset": 1,
+      "requested_utc": "2026-08-25T00:00:00+00:00",
+      "written_on": "uart",
+      "sent_hex": "14 00 db 8c 6a 00 00 00 00 00 00 00 00 00 00 e5",
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:45:06.672707+00:00",
+          "hex": "14 ff ff ff ff 00 00 00 00 00 00 00 00 00 00 10",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 20
+        }
+      ]
+    },
+    {
+      "opcode": 20,
+      "why": "answered 0xFF ff ff ff to a zero payload -- day-addressed, and the four-byte sentinel run hints at a wider record than the HR log's single byte",
+      "day_offset": 1,
+      "requested_utc": "2026-08-25T00:00:00+00:00",
+      "written_on": "bulk",
+      "sent_hex": "14 00 db 8c 6a 00 00 00 00 00 00 00 00 00 00 e5",
+      "frames": []
+    },
+    {
+      "opcode": 55,
+      "why": "answered 0xFF to a zero payload; day-addressed log, contents unknown",
+      "day_offset": 0,
+      "requested_utc": "2026-08-26T00:00:00+00:00",
+      "written_on": "uart",
+      "sent_hex": "37 80 2c 8e 6a 00 00 00 00 00 00 00 00 00 00 db",
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:45:10.377637+00:00",
+          "hex": "37 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 36",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 55
+        }
+      ]
+    },
+    {
+      "opcode": 55,
+      "why": "answered 0xFF to a zero payload; day-addressed log, contents unknown",
+      "day_offset": 0,
+      "requested_utc": "2026-08-26T00:00:00+00:00",
+      "written_on": "bulk",
+      "sent_hex": "37 80 2c 8e 6a 00 00 00 00 00 00 00 00 00 00 db",
+      "frames": []
+    },
+    {
+      "opcode": 55,
+      "why": "answered 0xFF to a zero payload; day-addressed log, contents unknown",
+      "day_offset": 1,
+      "requested_utc": "2026-08-25T00:00:00+00:00",
+      "written_on": "uart",
+      "sent_hex": "37 00 db 8c 6a 00 00 00 00 00 00 00 00 00 00 08",
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:45:14.510699+00:00",
+          "hex": "37 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 36",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 55
+        }
+      ]
+    },
+    {
+      "opcode": 55,
+      "why": "answered 0xFF to a zero payload; day-addressed log, contents unknown",
+      "day_offset": 1,
+      "requested_utc": "2026-08-25T00:00:00+00:00",
+      "written_on": "bulk",
+      "sent_hex": "37 00 db 8c 6a 00 00 00 00 00 00 00 00 00 00 08",
+      "frames": []
+    },
+    {
+      "opcode": 57,
+      "why": "answered 0xFF to a zero payload; day-addressed log, contents unknown",
+      "day_offset": 0,
+      "requested_utc": "2026-08-26T00:00:00+00:00",
+      "written_on": "uart",
+      "sent_hex": "39 80 2c 8e 6a 00 00 00 00 00 00 00 00 00 00 dd",
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:45:18.717704+00:00",
+          "hex": "39 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 38",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 57
+        }
+      ]
+    },
+    {
+      "opcode": 57,
+      "why": "answered 0xFF to a zero payload; day-addressed log, contents unknown",
+      "day_offset": 0,
+      "requested_utc": "2026-08-26T00:00:00+00:00",
+      "written_on": "bulk",
+      "sent_hex": "39 80 2c 8e 6a 00 00 00 00 00 00 00 00 00 00 dd",
+      "frames": []
+    },
+    {
+      "opcode": 57,
+      "why": "answered 0xFF to a zero payload; day-addressed log, contents unknown",
+      "day_offset": 1,
+      "requested_utc": "2026-08-25T00:00:00+00:00",
+      "written_on": "uart",
+      "sent_hex": "39 00 db 8c 6a 00 00 00 00 00 00 00 00 00 00 0a",
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:45:23.420634+00:00",
+          "hex": "39 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 38",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 57
+        }
+      ]
+    },
+    {
+      "opcode": 57,
+      "why": "answered 0xFF to a zero payload; day-addressed log, contents unknown",
+      "day_offset": 1,
+      "requested_utc": "2026-08-25T00:00:00+00:00",
+      "written_on": "bulk",
+      "sent_hex": "39 00 db 8c 6a 00 00 00 00 00 00 00 00 00 00 0a",
+      "frames": []
+    },
+    {
+      "opcode": 68,
+      "why": "answered 0xFF to a zero payload; day-addressed log, contents unknown",
+      "day_offset": 0,
+      "requested_utc": "2026-08-26T00:00:00+00:00",
+      "written_on": "uart",
+      "sent_hex": "44 80 2c 8e 6a 00 00 00 00 00 00 00 00 00 00 e8",
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:45:27.875704+00:00",
+          "hex": "44 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 43",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 68
+        }
+      ]
+    },
+    {
+      "opcode": 68,
+      "why": "answered 0xFF to a zero payload; day-addressed log, contents unknown",
+      "day_offset": 0,
+      "requested_utc": "2026-08-26T00:00:00+00:00",
+      "written_on": "bulk",
+      "sent_hex": "44 80 2c 8e 6a 00 00 00 00 00 00 00 00 00 00 e8",
+      "frames": []
+    },
+    {
+      "opcode": 68,
+      "why": "answered 0xFF to a zero payload; day-addressed log, contents unknown",
+      "day_offset": 1,
+      "requested_utc": "2026-08-25T00:00:00+00:00",
+      "written_on": "uart",
+      "sent_hex": "44 00 db 8c 6a 00 00 00 00 00 00 00 00 00 00 15",
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:45:32.206684+00:00",
+          "hex": "44 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 43",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 68
+        }
+      ]
+    },
+    {
+      "opcode": 68,
+      "why": "answered 0xFF to a zero payload; day-addressed log, contents unknown",
+      "day_offset": 1,
+      "requested_utc": "2026-08-25T00:00:00+00:00",
+      "written_on": "bulk",
+      "sent_hex": "44 00 db 8c 6a 00 00 00 00 00 00 00 00 00 00 15",
+      "frames": []
+    },
+    {
+      "opcode": 21,
+      "why": "the confirmed HR log. Included as a CONTROL -- it must return a real burst for the same day, or the request shape itself is wrong",
+      "day_offset": 0,
+      "requested_utc": "2026-08-26T00:00:00+00:00",
+      "written_on": "uart",
+      "sent_hex": "15 80 2c 8e 6a 00 00 00 00 00 00 00 00 00 00 b9",
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:45:36.538689+00:00",
+          "hex": "15 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 14",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        }
+      ]
+    },
+    {
+      "opcode": 21,
+      "why": "the confirmed HR log. Included as a CONTROL -- it must return a real burst for the same day, or the request shape itself is wrong",
+      "day_offset": 0,
+      "requested_utc": "2026-08-26T00:00:00+00:00",
+      "written_on": "bulk",
+      "sent_hex": "15 80 2c 8e 6a 00 00 00 00 00 00 00 00 00 00 b9",
+      "frames": []
+    },
+    {
+      "opcode": 21,
+      "why": "the confirmed HR log. Included as a CONTROL -- it must return a real burst for the same day, or the request shape itself is wrong",
+      "day_offset": 1,
+      "requested_utc": "2026-08-25T00:00:00+00:00",
+      "written_on": "uart",
+      "sent_hex": "15 00 db 8c 6a 00 00 00 00 00 00 00 00 00 00 e6",
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:45:40.621709+00:00",
+          "hex": "15 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 14",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 21
+        }
+      ]
+    },
+    {
+      "opcode": 21,
+      "why": "the confirmed HR log. Included as a CONTROL -- it must return a real burst for the same day, or the request shape itself is wrong",
+      "day_offset": 1,
+      "requested_utc": "2026-08-25T00:00:00+00:00",
+      "written_on": "bulk",
+      "sent_hex": "15 00 db 8c 6a 00 00 00 00 00 00 00 00 00 00 e6",
+      "frames": []
+    },
+    {
+      "opcode": 60,
+      "why": "returned `3c 00 04` to a zero payload. Not a sentinel and not empty, so it carries something; worth asking with a real day",
+      "day_offset": 0,
+      "requested_utc": "2026-08-26T00:00:00+00:00",
+      "written_on": "uart",
+      "sent_hex": "3c 80 2c 8e 6a 00 00 00 00 00 00 00 00 00 00 e0",
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:45:44.953690+00:00",
+          "hex": "3c 00 04 00 00 00 00 00 00 00 00 00 00 00 00 40",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 60
+        }
+      ]
+    },
+    {
+      "opcode": 60,
+      "why": "returned `3c 00 04` to a zero payload. Not a sentinel and not empty, so it carries something; worth asking with a real day",
+      "day_offset": 0,
+      "requested_utc": "2026-08-26T00:00:00+00:00",
+      "written_on": "bulk",
+      "sent_hex": "3c 80 2c 8e 6a 00 00 00 00 00 00 00 00 00 00 e0",
+      "frames": []
+    },
+    {
+      "opcode": 60,
+      "why": "returned `3c 00 04` to a zero payload. Not a sentinel and not empty, so it carries something; worth asking with a real day",
+      "day_offset": 1,
+      "requested_utc": "2026-08-25T00:00:00+00:00",
+      "written_on": "uart",
+      "sent_hex": "3c 00 db 8c 6a 00 00 00 00 00 00 00 00 00 00 0d",
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:45:49.284708+00:00",
+          "hex": "3c 00 04 00 00 00 00 00 00 00 00 00 00 00 00 40",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 60
+        }
+      ]
+    },
+    {
+      "opcode": 60,
+      "why": "returned `3c 00 04` to a zero payload. Not a sentinel and not empty, so it carries something; worth asking with a real day",
+      "day_offset": 1,
+      "requested_utc": "2026-08-25T00:00:00+00:00",
+      "written_on": "bulk",
+      "sent_hex": "3c 00 db 8c 6a 00 00 00 00 00 00 00 00 00 00 0d",
+      "frames": []
+    },
+    {
+      "opcode": 72,
+      "why": "returned a full payload to a zero request, so it is not day-addressed. Included to capture it properly rather than to find sleep",
+      "day_offset": 0,
+      "requested_utc": "2026-08-26T00:00:00+00:00",
+      "written_on": "uart",
+      "sent_hex": "48 80 2c 8e 6a 00 00 00 00 00 00 00 00 00 00 ec",
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:45:54.110715+00:00",
+          "hex": "48 00 00 00 00 00 00 00 00 00 00 00 00 00 00 48",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 72
+        }
+      ]
+    },
+    {
+      "opcode": 72,
+      "why": "returned a full payload to a zero request, so it is not day-addressed. Included to capture it properly rather than to find sleep",
+      "day_offset": 0,
+      "requested_utc": "2026-08-26T00:00:00+00:00",
+      "written_on": "bulk",
+      "sent_hex": "48 80 2c 8e 6a 00 00 00 00 00 00 00 00 00 00 ec",
+      "frames": []
+    },
+    {
+      "opcode": 72,
+      "why": "returned a full payload to a zero request, so it is not day-addressed. Included to capture it properly rather than to find sleep",
+      "day_offset": 1,
+      "requested_utc": "2026-08-25T00:00:00+00:00",
+      "written_on": "uart",
+      "sent_hex": "48 00 db 8c 6a 00 00 00 00 00 00 00 00 00 00 19",
+      "frames": [
+        {
+          "channel": "uart",
+          "received_utc": "2026-08-26T07:45:57.947683+00:00",
+          "hex": "48 00 00 00 00 00 00 00 00 00 00 00 00 00 00 48",
+          "len": 16,
+          "checksum_ok": true,
+          "byte0": 72
+        }
+      ]
+    },
+    {
+      "opcode": 72,
+      "why": "returned a full payload to a zero request, so it is not day-addressed. Included to capture it properly rather than to find sleep",
+      "day_offset": 1,
+      "requested_utc": "2026-08-25T00:00:00+00:00",
+      "written_on": "bulk",
+      "sent_hex": "48 00 db 8c 6a 00 00 00 00 00 00 00 00 00 00 19",
+      "frames": []
+    }
+  ]
+}

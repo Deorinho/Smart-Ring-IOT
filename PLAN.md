@@ -143,11 +143,12 @@ Calibrated to 2–4 hour sessions, roughly two per weekend plus one midweek.
 | **5** | **Storage + read path** ✅ *(2026-08-13)* | Real samples in `ring.db`; re-ingest adds nothing; JSON API and dashboard render them |
 | **6** | **Sync service** ⚠️ *(2026-08-16)* | `hub/sync.py` under a systemd timer pulls and stores 3×/day unattended — **true while the machine stays up, false across a reboot.** The user units live in an eCryptfs home that does not decrypt until interactive login, so nothing starts at boot (R-018, found 2026-08-17). The sync logic itself is sound and verified; only its startup is broken. Completed by session 8 |
 | **7** | **Remote access + a restored backup** ✅ *(2026-08-17)* | Tailscale Serve gives the tailnet a real cert; the PWA is installed on the iPhone and works **over cellular with WiFi off** and offline in airplane mode; the LAN `ufw` rule is deleted and the dashboard is tailnet-only; a real hub backup restored to 334 samples and rendered in a browser. **R-004 and R-001 both closed** — Mullvad and Tailscale coexist with no configuration. Reboot persistence carries over as R-017 |
-| 8 | **Boot survival — move off the encrypted home** | Repo, venv and data at `/srv/ravenx`; all **six** unit files become system units with `User=warlock`; `ring-sync.service` finally gets a `bluetooth.target` ordering that can actually apply. Adds `/api/alert` + an iOS Shortcut for the battery warning (R-009). **Exit criterion is a reboot**: the phone loads the dashboard with nobody logging in (R-018 P1, R-005) |
-| 9 | Sleep | A real night renders as a stage sequence. Reverse-engineering, not porting (R-008) |
-| 10 | Analytics rollups | Resting HR, sleep duration, activity buckets, temperature baseline |
-| 11 | Sensing-flag hunt + hardening | Find what burns the 13%/day idle floor (R-014); longitudinal sanity checks |
-| 12+ | Architecture B | ESP32-C3 satellite, then video production |
+| **8** | **Boot survival — move off the encrypted home** ✅ *(2026-08-26)* | Repo, venv and data at `/srv/ravenx`; all six unit files are system units with `User=warlock`. Dashboard, timers and the phone's Sync button all work with **nobody logged in** — R-018 closed. Adds `/api/alert` (R-009). Found **R-020**: the disk is LUKS-encrypted, so the hub cannot boot unattended at all — a layer below anything systemd reaches |
+| **9** | **Sleep — reconnaissance** ⚠️ *(2026-08-26)* | Opcode **not** named. Found the undocumented unsupported-command reply (`op \| 0x80`, then `0xEE`), which turns opcode discovery into a decision procedure; ruled out `0x27`/`0xBC`; produced evidence-based candidates `0x14`/`0x37`/`0x39`/`0x44`. A broad sweep wiped the ring's buffer (R-021), so the candidates are untested against real data. Resumes once a night is recorded |
+| 10 | Sleep — parse a real night | A real night renders as a stage sequence, from whichever of `0x14`/`0x37`/`0x39`/`0x44` answers with data (R-008) |
+| 11 | Analytics rollups | Resting HR, sleep duration, activity buckets, temperature baseline |
+| 12 | Sensing-flag hunt + hardening | Find what burns the 13%/day idle floor (R-014); longitudinal sanity checks |
+| 13+ | Architecture B | ESP32-C3 satellite, then video production |
 
 Re-sequenced 2026-08-13. Session 5 delivered the dashboard early because storage made it
 nearly free, so the old "FastAPI + dashboard" row is gone. The two things now standing
