@@ -145,10 +145,11 @@ Calibrated to 2–4 hour sessions, roughly two per weekend plus one midweek.
 | **7** | **Remote access + a restored backup** ✅ *(2026-08-17)* | Tailscale Serve gives the tailnet a real cert; the PWA is installed on the iPhone and works **over cellular with WiFi off** and offline in airplane mode; the LAN `ufw` rule is deleted and the dashboard is tailnet-only; a real hub backup restored to 334 samples and rendered in a browser. **R-004 and R-001 both closed** — Mullvad and Tailscale coexist with no configuration. Reboot persistence carries over as R-017 |
 | **8** | **Boot survival — move off the encrypted home** ✅ *(2026-08-26)* | Repo, venv and data at `/srv/ravenx`; all six unit files are system units with `User=warlock`. Dashboard, timers and the phone's Sync button all work with **nobody logged in** — R-018 closed. Adds `/api/alert` (R-009). Found **R-020**: the disk is LUKS-encrypted, so the hub cannot boot unattended at all — a layer below anything systemd reaches |
 | **9** | **Sleep — reconnaissance** ⚠️ *(2026-08-26)* | Opcode **not** named. Found the undocumented unsupported-command reply (`op \| 0x80`, then `0xEE`), which turns opcode discovery into a decision procedure; ruled out `0x27`/`0xBC`; produced evidence-based candidates `0x14`/`0x37`/`0x39`/`0x44`. A broad sweep wiped the ring's buffer (R-021), so the candidates are untested against real data. Resumes once a night is recorded |
-| 10 | Sleep — parse a real night | A real night renders as a stage sequence, from whichever of `0x14`/`0x37`/`0x39`/`0x44` answers with data (R-008) |
-| 11 | Analytics rollups | Resting HR, sleep duration, activity buckets, temperature baseline |
-| 12 | Sensing-flag hunt + hardening | Find what burns the 13%/day idle floor (R-014); longitudinal sanity checks |
-| 13+ | Architecture B | ESP32-C3 satellite, then video production |
+| **10** | **Remote hub — the desktop moves to Mississauga** ✅ *(2026-09-07)* | Tailscale on the desktop; Tailscale SSH so the hub is reachable from another province; `tools/pull_backups.ps1` mirrors the hub's backups nightly and verifies one restores. Found that **`hub/sync.py` runs on Windows**, making any machine with a Bluetooth radio an Architecture B satellite (R-023, R-016) |
+| 11 | Sleep — parse a real night | A real night renders as a stage sequence, from whichever of `0x14`/`0x37`/`0x39`/`0x44` answers with data (R-008). **Blocked on R-022** — the ring's log is empty and may not be recording at all |
+| 12 | Analytics rollups | Resting HR, sleep duration, activity buckets, temperature baseline |
+| 13 | Sensing-flag hunt + hardening | Find what burns the 13%/day idle floor (R-014); longitudinal sanity checks |
+| 14+ | Architecture B | ESP32-C3 satellite, then video production |
 
 Re-sequenced 2026-08-13. Session 5 delivered the dashboard early because storage made it
 nearly free, so the old "FastAPI + dashboard" row is gone. The two things now standing

@@ -1,0 +1,299 @@
+{
+  "captured_utc": "2026-09-02T07:08:55.126075+00:00",
+  "ring": {
+    "name": "R06_D29C",
+    "address": "81:5F:4A:87:D2:9C"
+  },
+  "note": "Factory-virgin R06: RTC never set at capture time. Clock NOT written.",
+  "command": {
+    "name": "CMD_READ_HEART_RATE",
+    "value": 21
+  },
+  "probes": [
+    {
+      "label": "UTC midnight -0d (2026-09-02)",
+      "requested_ts": 1788307200,
+      "requested_iso": "2026-09-02T00:00:00+00:00",
+      "request_hex": "15 00 67 97 6a 00 00 00 00 00 00 00 00 00 00 7d",
+      "frame_count": 1,
+      "frames": [
+        {
+          "seq": 1,
+          "channel": "command",
+          "offset_ms": 40,
+          "hex": "15 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 14",
+          "len": 16,
+          "command_id": 21,
+          "sub_type": 255,
+          "checksum_ok": true
+        }
+      ]
+    },
+    {
+      "label": "UTC midnight -1d (2026-09-01)",
+      "requested_ts": 1788220800,
+      "requested_iso": "2026-09-01T00:00:00+00:00",
+      "request_hex": "15 80 15 96 6a 00 00 00 00 00 00 00 00 00 00 aa",
+      "frame_count": 1,
+      "frames": [
+        {
+          "seq": 2,
+          "channel": "command",
+          "offset_ms": 118,
+          "hex": "15 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 14",
+          "len": 16,
+          "command_id": 21,
+          "sub_type": 255,
+          "checksum_ok": true
+        }
+      ]
+    },
+    {
+      "label": "UTC midnight -2d (2026-08-31)",
+      "requested_ts": 1788134400,
+      "requested_iso": "2026-08-31T00:00:00+00:00",
+      "request_hex": "15 00 c4 94 6a 00 00 00 00 00 00 00 00 00 00 d7",
+      "frame_count": 1,
+      "frames": [
+        {
+          "seq": 3,
+          "channel": "command",
+          "offset_ms": 100,
+          "hex": "15 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 14",
+          "len": 16,
+          "command_id": 21,
+          "sub_type": 255,
+          "checksum_ok": true
+        }
+      ]
+    },
+    {
+      "label": "UTC midnight -3d (2026-08-30)",
+      "requested_ts": 1788048000,
+      "requested_iso": "2026-08-30T00:00:00+00:00",
+      "request_hex": "15 80 72 93 6a 00 00 00 00 00 00 00 00 00 00 04",
+      "frame_count": 1,
+      "frames": [
+        {
+          "seq": 4,
+          "channel": "command",
+          "offset_ms": 69,
+          "hex": "15 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 14",
+          "len": 16,
+          "command_id": 21,
+          "sub_type": 255,
+          "checksum_ok": true
+        }
+      ]
+    },
+    {
+      "label": "UTC midnight -4d (2026-08-29)",
+      "requested_ts": 1787961600,
+      "requested_iso": "2026-08-29T00:00:00+00:00",
+      "request_hex": "15 00 21 92 6a 00 00 00 00 00 00 00 00 00 00 32",
+      "frame_count": 1,
+      "frames": [
+        {
+          "seq": 5,
+          "channel": "command",
+          "offset_ms": 78,
+          "hex": "15 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 14",
+          "len": 16,
+          "command_id": 21,
+          "sub_type": 255,
+          "checksum_ok": true
+        }
+      ]
+    },
+    {
+      "label": "UTC midnight -5d (2026-08-28)",
+      "requested_ts": 1787875200,
+      "requested_iso": "2026-08-28T00:00:00+00:00",
+      "request_hex": "15 80 cf 90 6a 00 00 00 00 00 00 00 00 00 00 5e",
+      "frame_count": 1,
+      "frames": [
+        {
+          "seq": 6,
+          "channel": "command",
+          "offset_ms": 90,
+          "hex": "15 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 14",
+          "len": 16,
+          "command_id": 21,
+          "sub_type": 255,
+          "checksum_ok": true
+        }
+      ]
+    },
+    {
+      "label": "UTC midnight -6d (2026-08-27)",
+      "requested_ts": 1787788800,
+      "requested_iso": "2026-08-27T00:00:00+00:00",
+      "request_hex": "15 00 7e 8f 6a 00 00 00 00 00 00 00 00 00 00 8c",
+      "frame_count": 1,
+      "frames": [
+        {
+          "seq": 7,
+          "channel": "command",
+          "offset_ms": 56,
+          "hex": "15 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 14",
+          "len": 16,
+          "command_id": 21,
+          "sub_type": 255,
+          "checksum_ok": true
+        }
+      ]
+    },
+    {
+      "label": "UTC midnight -7d (2026-08-26)",
+      "requested_ts": 1787702400,
+      "requested_iso": "2026-08-26T00:00:00+00:00",
+      "request_hex": "15 80 2c 8e 6a 00 00 00 00 00 00 00 00 00 00 b9",
+      "frame_count": 1,
+      "frames": [
+        {
+          "seq": 8,
+          "channel": "command",
+          "offset_ms": 67,
+          "hex": "15 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 14",
+          "len": 16,
+          "command_id": 21,
+          "sub_type": 255,
+          "checksum_ok": true
+        }
+      ]
+    },
+    {
+      "label": "UTC midnight -8d (2026-08-25)",
+      "requested_ts": 1787616000,
+      "requested_iso": "2026-08-25T00:00:00+00:00",
+      "request_hex": "15 00 db 8c 6a 00 00 00 00 00 00 00 00 00 00 e6",
+      "frame_count": 1,
+      "frames": [
+        {
+          "seq": 9,
+          "channel": "command",
+          "offset_ms": 177,
+          "hex": "15 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 14",
+          "len": 16,
+          "command_id": 21,
+          "sub_type": 255,
+          "checksum_ok": true
+        }
+      ]
+    },
+    {
+      "label": "factory epoch 1970-01-01 +0d",
+      "requested_ts": 0,
+      "requested_iso": "1970-01-01T00:00:00+00:00",
+      "request_hex": "15 00 00 00 00 00 00 00 00 00 00 00 00 00 00 15",
+      "frame_count": 1,
+      "frames": [
+        {
+          "seq": 10,
+          "channel": "command",
+          "offset_ms": 392,
+          "hex": "15 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 14",
+          "len": 16,
+          "command_id": 21,
+          "sub_type": 255,
+          "checksum_ok": true
+        }
+      ]
+    },
+    {
+      "label": "factory epoch 1970-01-01 +1d",
+      "requested_ts": 86400,
+      "requested_iso": "1970-01-02T00:00:00+00:00",
+      "request_hex": "15 80 51 01 00 00 00 00 00 00 00 00 00 00 00 e7",
+      "frame_count": 1,
+      "frames": [
+        {
+          "seq": 11,
+          "channel": "command",
+          "offset_ms": 1294,
+          "hex": "15 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 14",
+          "len": 16,
+          "command_id": 21,
+          "sub_type": 255,
+          "checksum_ok": true
+        }
+      ]
+    },
+    {
+      "label": "factory epoch 1970-01-01 +2d",
+      "requested_ts": 172800,
+      "requested_iso": "1970-01-03T00:00:00+00:00",
+      "request_hex": "15 00 a3 02 00 00 00 00 00 00 00 00 00 00 00 ba",
+      "frame_count": 1,
+      "frames": [
+        {
+          "seq": 12,
+          "channel": "command",
+          "offset_ms": 824,
+          "hex": "15 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 14",
+          "len": 16,
+          "command_id": 21,
+          "sub_type": 255,
+          "checksum_ok": true
+        }
+      ]
+    },
+    {
+      "label": "factory epoch 2000-01-01 +0d",
+      "requested_ts": 946684800,
+      "requested_iso": "2000-01-01T00:00:00+00:00",
+      "request_hex": "15 80 43 6d 38 00 00 00 00 00 00 00 00 00 00 7d",
+      "frame_count": 1,
+      "frames": [
+        {
+          "seq": 13,
+          "channel": "command",
+          "offset_ms": 672,
+          "hex": "15 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 14",
+          "len": 16,
+          "command_id": 21,
+          "sub_type": 255,
+          "checksum_ok": true
+        }
+      ]
+    },
+    {
+      "label": "factory epoch 2000-01-01 +1d",
+      "requested_ts": 946771200,
+      "requested_iso": "2000-01-02T00:00:00+00:00",
+      "request_hex": "15 00 95 6e 38 00 00 00 00 00 00 00 00 00 00 50",
+      "frame_count": 1,
+      "frames": [
+        {
+          "seq": 14,
+          "channel": "command",
+          "offset_ms": 736,
+          "hex": "15 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 14",
+          "len": 16,
+          "command_id": 21,
+          "sub_type": 255,
+          "checksum_ok": true
+        }
+      ]
+    },
+    {
+      "label": "factory epoch 2000-01-01 +2d",
+      "requested_ts": 946857600,
+      "requested_iso": "2000-01-03T00:00:00+00:00",
+      "request_hex": "15 80 e6 6f 38 00 00 00 00 00 00 00 00 00 00 22",
+      "frame_count": 1,
+      "frames": [
+        {
+          "seq": 15,
+          "channel": "command",
+          "offset_ms": 687,
+          "hex": "15 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 14",
+          "len": 16,
+          "command_id": 21,
+          "sub_type": 255,
+          "checksum_ok": true
+        }
+      ]
+    }
+  ]
+}

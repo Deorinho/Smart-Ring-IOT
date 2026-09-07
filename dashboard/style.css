@@ -48,7 +48,7 @@
      browser is running a mismatched shell -- new markup against an old stylesheet, the
      failure that made the sync button render white and the charging bolt appear at
      full size while not charging. Bump both together. */
-  --build: "0820b";
+  --build: "0907a";
 }
 
 * { box-sizing: border-box; }
