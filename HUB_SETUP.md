@@ -19,7 +19,7 @@ The machine as it actually exists, so nothing has to be re-derived each session.
 | Python | 3.12.3 |
 | Bluetooth | Broadcom BCM20702B0, BT 4.0. Firmware loads clean. Stack initializes ~43 s into boot — services must wait for it. |
 | WiFi | Must stay on **5 GHz**: one Broadcom radio is shared with Bluetooth, and 2.4 GHz degrades BLE scanning intermittently. |
-| VPN | Mullvad runs here. **Local network sharing must stay enabled** or SSH and the dashboard break. |
+| VPN | Mullvad is installed but **disconnected as of 2026-09-07** (Bug_Backlog R-023). Connected, it became the hub's advertised Tailscale endpoint and cut tailnet throughput from 410 KB/s to under 9 KB/s — fine for the dashboard, useless for a backup pull. If it is ever reconnected, LAN sharing must stay on, and note LAN sharing does **not** cover `100.64.0.0/10`. |
 
 Directory layout — **`/srv`, not `$HOME`**:
 
@@ -93,12 +93,27 @@ own keyboard again. Key-based auth recommended:
 ssh-copy-id <user>@<hub-ip>
 ```
 
-**One-click launcher (Windows desktop).** `tools/hub_connect.ps1` opens the session and
-copes with the hub's DHCP address moving: it tries the address remembered under `Host hub`
-in `~/.ssh/config`, then `10.0.0.213`, then sweeps the local /24 for an open port 22 —
-and writes whatever it finds back to `~/.ssh/config`, so plain `ssh hub` stays correct.
-Run `tools/install_hub_shortcut.ps1` once to drop a "RavenX Hub" shortcut on the Desktop.
-Both become obsolete once Tailscale MagicDNS gives the hub a stable name.
+**One-click launcher (Windows desktop).** `tools/hub_connect.ps1` tries the **tailnet
+MagicDNS name first** (`warlock.tail41f2a1.ts.net`), which is the only candidate that
+works from another city, then falls back to the remembered address, `10.0.0.213`, and a
+local /24 sweep for when you are at home with Tailscale off. Run
+`tools/install_hub_shortcut.ps1` once to drop a "RavenX Hub" shortcut on the Desktop.
+
+Two things it deliberately does **not** do, both learned on 2026-09-07:
+
+- **It never writes a LAN address into `Host hub`.** The earlier version remembered
+  whatever it found, so one connection from home would overwrite the tailnet name and
+  silently break `ssh hub` the next time you travelled. Only the MagicDNS name is ever
+  remembered; a swept LAN address is used for that session and discarded.
+- **It uses the FQDN, never the bare node name.** The desktop's own Windows hostname is
+  also `WARLOCK`, so bare `warlock` resolves to the local machine before MagicDNS is
+  consulted — you connect to yourself, and the failure is baffling.
+
+**Do not rename nodes in the Tailscale admin console.** The MagicDNS name is what
+Tailscale Serve holds its certificate for, so a rename leaves Serve listening on 443 with
+a certificate for a hostname that no longer exists: the port accepts, the TLS handshake
+fails, and — because the dashboard's service worker falls back to its cached shell — the
+phone keeps painting a page that looks alive. That combination cost an hour.
 
 ## 2a. Viewing any hub service from the desktop — the standing method
 

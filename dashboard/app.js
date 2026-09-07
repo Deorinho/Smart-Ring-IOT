@@ -12,7 +12,7 @@
 /* Build id. Must match --build in style.css; they are compared at boot so a shell
  * assembled from mismatched files announces itself instead of looking like a styling
  * bug. Bump both on any change to the shell. */
-const BUILD = "0820b";
+const BUILD = "0907a";
 
 const $ = (id) => document.getElementById(id);
 const pad = (n) => String(n).padStart(2, "0");
@@ -259,6 +259,25 @@ function renderStatus(health) {
   }
 
   const hours = (Date.now() - new Date(health.last_sample_utc)) / 3600000;
+
+  /* "The hub is down" and "the hub is fine but cannot see the ring" are completely
+   * different problems with completely different fixes, and until now both rendered as
+   * the same dead grey line. The hub records `no_device` for a scan that found nothing --
+   * a normal outcome several times a day, since the ring is on a hand that leaves the
+   * house -- so say that instead of implying a fault.
+   *
+   * This became the common case on 2026-08-28, when the desktop moved to Mississauga and
+   * the hub stayed in Montreal: three honest syncs a day, all finding nothing, shown as
+   * a dashboard that looked broken. */
+  const lastStatus = health.last_sync && health.last_sync.status;
+  if (lastStatus === "no_device") {
+    el.className = "status num stale";
+    text.textContent =
+      `Ring not seen · ${runs.total}/${runs.expected} scans today · ` +
+      `last reading ${ago(health.last_sample_utc)}`;
+    return;
+  }
+
   el.className = "status num" + (hours > 24 ? " dead" : hours > 10 ? " stale" : "");
 
   // A bare clock time reads as today. Once the last sync is far enough back that

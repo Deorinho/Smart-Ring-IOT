@@ -38,9 +38,9 @@ import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from bleak import BleakClient
+from bleak import BleakClient, BleakScanner
 
-from hub.config import R06
+from hub.config import R06, SCAN_TIMEOUT_S
 from protocol.commands import (
     BULK_TX_CHAR_UUID,
     CMD_READ_HEART_RATE,
@@ -171,7 +171,25 @@ async def run_probe(client: BleakClient, probe: dict, collector: Collector) -> d
 
 async def connect_and_subscribe(collector: Collector) -> BleakClient:
     """Fresh connection with both vendor notify channels subscribed."""
-    client = BleakClient(R06.address, timeout=CONNECT_TIMEOUT_S)
+    # Scan first, then connect to the DEVICE rather than to the address string.
+    #
+    # BlueZ resolves a bare MAC itself, so `BleakClient(address)` works on the hub. The
+    # WinRT backend cannot: Windows needs the device discovered in a scan before it can
+    # turn an address into a connectable handle, and a direct address raises
+    # BleakDeviceNotFoundError even while the ring is awake and two feet away. That is
+    # exactly what happened on 2026-09-02 -- ten probes, ten "not found", on a ring that
+    # hub/sync.py had connected to minutes earlier because it scans first.
+    #
+    # Scanning costs a few seconds and makes this tool portable, which now matters: the
+    # desktop is a working satellite (see CLAUDE.md), not just a place to write code.
+    device = await BleakScanner.find_device_by_address(
+        R06.address, timeout=SCAN_TIMEOUT_S
+    )
+    if device is None:
+        raise RuntimeError(
+            f"{R06.name} not found in scan - is it on your finger and off the charger?"
+        )
+    client = BleakClient(device, timeout=CONNECT_TIMEOUT_S)
     await client.connect()
     for uuid, name in CHANNELS.items():
         try:

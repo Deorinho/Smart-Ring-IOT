@@ -207,7 +207,22 @@ def alert() -> dict:
         reasons: list[str] = []
 
         battery = db.latest_sample(conn, "battery")
-        if battery is not None and battery["value"] <= BATTERY_ALERT_PERCENT:
+        # A battery reading is only as fresh as the sync that fetched it, and nothing
+        # polls the ring. Twelve days away from the hub, the last stored value said 18%
+        # while the ring was sitting on a charger at 100% -- so the alert was asserting a
+        # level it could not know, which is the one thing this project's display rules
+        # forbid everywhere else. If the reading is older than the staleness window, the
+        # "no new readings" alert below already covers it; say that instead of inventing
+        # a battery percentage.
+        battery_age_h = (
+            (now - _parse_iso(battery["ts_utc"])).total_seconds() / 3600
+            if battery is not None
+            else None
+        )
+        battery_is_current = (
+            battery_age_h is not None and battery_age_h < STALE_SYNC_ALERT_HOURS
+        )
+        if battery is not None and battery_is_current and battery["value"] <= BATTERY_ALERT_PERCENT:
             pct = int(battery["value"])
             # Days remaining from the measured drain rate, not a guess. Deliberately not
             # shown below one day: "0.4 days" invites precision the gauge cannot support,

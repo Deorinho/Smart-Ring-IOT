@@ -1200,3 +1200,141 @@ now matched by content.
 - Which opcode disables logging is unknown. Narrowing it means small batches with a
   policy read after each — a deliberate experiment, not a sweep.
 - 0x6b–0xf0 never probed, and will not be by sweeping.
+
+## 2026-09-07 — Session 10: the hub goes remote, and the ring stops recording
+
+The desktop moved to Mississauga on 2026-08-28; the hub stayed in Montreal. That turned
+every "I'll just SSH in" assumption into a test, and four of them failed. It also
+delivered Architecture B three sessions early, from a direction nobody planned.
+
+### The hub was fine — everything else was not
+
+`hub_connect.ps1` swept a /24 the hub is not on. The tailnet name did not resolve.
+Tailscale was never installed on this desktop — only ever on the hub and the phone —
+so the mesh that exists precisely for this had no node at the end that needed it.
+
+Installing it exposed the next layer. `tailscale ping` pongs in 40 ms, port 443 answers,
+**port 22 times out**. That split is the whole diagnosis: Tailscale Serve and ping are
+terminated *inside* `tailscaled` and never traverse the host firewall, while a raw TCP
+connection to sshd does. Anything that stayed inside the daemon worked; anything that
+had to cross into the host did not.
+
+**And a self-inflicted one.** Renaming the Tailscale nodes to something tidier broke
+Serve outright: the MagicDNS name is what Serve holds its certificate for, so
+`warlock` → `warlock-linux` left it listening on 443 with a certificate for a hostname
+that no longer existed. The port accepted, the handshake failed, and there was no useful
+error anywhere. Reverting the name fixed it with no hub access at all.
+
+**The service worker hid that for an hour.** The phone kept painting the dashboard, so
+the hub looked alive. Network-first falls back to cache when the network fails — correct
+behaviour, and it means *"the dashboard loads" is not evidence the hub is up*. The status
+line and the build stamp are; the shell is not.
+
+### One command, one favour
+
+Tailscale SSH routes SSH through `tailscaled`, bypassing the host firewall the same way
+Serve does — so it fixes the block without needing to know whether Mullvad or `ufw` was
+the cause. The tailnet's default ACL already permits it, so the ask was a single line
+typed on the MacBook by someone else:
+
+```bash
+sudo tailscale set --ssh=true
+```
+
+That also quietly solves the `authorized_keys`-inside-an-encrypted-home problem from
+§7b, since Tailscale authenticates rather than sshd.
+
+Then the desktop refused to connect anyway: `WSAEACCES` on connect, a *local* error.
+**Mullvad was running here too**, and quitting the VPN connection does not stop the
+daemon enforcing lockdown. Third machine, same root cause, and the one this project has
+written down since session 7 without ever drawing the conclusion: **Mullvad's LAN-sharing
+exemption covers RFC1918 and not `100.64.0.0/10`.** R-001 was closed on evidence that
+never left `tailscaled`. Logged properly as R-023.
+
+### Mullvad was costing 45x throughput, invisibly
+
+With SSH working, the backup pull timed out repeatedly on 4.2 MB. Measured:
+
+```text
+Mullvad connected     endpoint 146.70.198.146:41641   under   9 KB/s
+Mullvad disconnected  endpoint [2607:fa49:...]:41641        410 KB/s
+```
+
+`146.70.198.146` is a Mullvad address — the hub was **advertising its VPN exit IP as its
+Tailscale endpoint**, so tailnet traffic ran WireGuard inside WireGuard through a VPN
+hop. Latency stayed fine at 40 ms, which is exactly why nobody noticed: the dashboard,
+the API and the Sync button are all small requests. Nothing had moved more than a few
+hundred bytes over that path in a month.
+
+Decision: Mullvad stays off on the hub for now, with split-tunnelling versus Tailscale's
+own Mullvad exit node deferred. Watch `mullvad auto-connect` — if it is on, a reboot
+silently restores the slow path.
+
+### Architecture B arrived without an ESP32
+
+`CLAUDE.md` said `hub/sync.py` was hub-only and "expected to fail immediately on
+Windows". That was reasoning about BlueZ. `bleak` has a WinRT backend, and the desktop
+has a Bluetooth radio:
+
+```text
+INFO scanning for R06_D29C
+INFO connected
+INFO sensing policy already correct (HR every 30 min)
+INFO battery 100% (on battery)
+```
+
+**Any machine with a Bluetooth radio is now a satellite.** Point `RAVENX_DATA_DIR` at a
+separate store, sync there, merge later — safe by construction, because `samples`' key
+`(source_id, metric, ts_utc)` makes re-ingesting identical readings a no-op. That
+property was designed in session 1 for a satellite that does not exist yet, and it paid
+out tonight for one nobody planned. It does not retire the firmware work, which PLAN.md
+wants for its own sake; it removes the urgency.
+
+### R-016 closed properly
+
+`tools/pull_backups.ps1` mirrors the hub's backups over the tailnet nightly and then
+**restores the newest one to prove it works** — reusing `restore.py`, which reads through
+`hub/db.py`'s own query functions rather than raw SQL. Copying is not having a backup,
+and a nightly pull that never re-checks lets R-004 decay straight back into a belief.
+
+```text
+copied: 19 file(s) local, newest 268 KB
+OK   integrity   2994 rows across 7 tables
+OK   read path   740 samples | 74 sync runs | 2172 raw frames
+RESTORE PROVEN
+```
+
+Nineteen local against fourteen on the hub — the off-site archive already outlives the
+hub's rotation, which is what an off-site archive is for.
+
+### The finding that matters most
+
+The ring spent about five minutes in a washing machine.
+
+It survived, apparently: fifteen clean protocol exchanges, replies in 40–1300 ms, zero
+checksum failures, battery 100%, sensing policy reading `enabled, 30 min`. Radio, MCU
+and settings all perfect.
+
+**And its log is empty for every addressable date.** Nine days of 2026, three days at the
+1970 epoch, three at 2000 — all `15 ff`, the no-data sentinel, 15 of 15 answered.
+
+That rules out the obvious theory. A brown-out could have reset the RTC, which would file
+readings under an epoch date; those dates are empty too. The data is not hiding.
+
+So either the wash cleared the buffer, or water reached the PPG sensor and the ring now
+talks perfectly while sensing nothing. **Logged as R-022, P1** — it outranks everything
+else in the backlog, because a daily driver that does not record is not a daily driver.
+The discriminating test is 45 minutes of wear followed by a probe of today alone; a burst
+means the hardware is fine and only history was lost.
+
+Confounded, annoyingly, by R-021 having wiped the same buffer on 08-26 — only the wear
+test separates the two.
+
+### Open after session 10
+
+- **R-022.** Does the R06 still sense? Everything downstream waits on that answer.
+- Sleep (R-008) is blocked behind it: there is nothing to parse from an empty log.
+- Mullvad on the hub: split-tunnel, Tailscale exit node, or leave it off.
+- The nightly pull needs registering as a scheduled task; the tool works, the schedule
+  does not exist yet.
+- `mullvad auto-connect` unchecked — a reboot may silently restore the slow path.

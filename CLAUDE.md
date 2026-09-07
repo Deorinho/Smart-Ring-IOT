@@ -5,15 +5,23 @@ to a home hub — a 2014 MacBook Air running Linux Mint — which stores, analyz
 serves a PWA dashboard to an iPhone. No cloud, no accounts, no subscriptions; the data
 never leaves hardware Abhi owns.
 
-**Status (2026-08-16):** both rings in hand; sessions 1–6 merged to `main`. The pipeline
-runs itself — BLE → parser → SQLite → JSON API → dashboard, on a timer, unattended.
-Remote access is the current frontier.
+**Status (2026-09-02):** both rings in hand; sessions 1–9 merged to `main`. The pipeline
+runs itself and survives a reboot. **The desktop moved to Mississauga on 2026-08-28 and
+the hub stayed in Montreal**, so the ring is 5.5 h from its hub and syncing locally
+instead — see the Architecture note below.
 
-- **Hub:** reachable over SSH with the lid closed, Bluetooth working, Python 3.12.3.
-  Four systemd **user** units are installed and running with linger enabled
-  (`ring-sync` + timer, `ring-backup` + timer, `ring-dashboard`). **Tailscale is still
-  not installed**, so the dashboard is LAN-only behind a `ufw` allow rule, and the hub
-  cannot push to GitHub (Bug_Backlog R-013) — captures come back over `scp`.
+- **Hub:** `/srv/ravenx/repo` and `/srv/ravenx/data`, **not** `$HOME` — the home
+  directory is eCryptfs and does not exist until an interactive login (R-018). Six
+  **system** units run as `User=warlock`; there is no linger and no user unit anywhere.
+  Tailscale is up with Serve on `https://warlock.tail41f2a1.ts.net`, the LAN `ufw` rule
+  is gone, and the dashboard is tailnet-only.
+- **Two things the hub cannot do.** It cannot **boot** unattended — the disk is
+  LUKS-encrypted and prompts at the console (R-020), so a power cut needs someone
+  physically present. And **SSH over the tailnet is blocked** by its own firewall: only
+  traffic terminated inside `tailscaled` (Serve, ping) gets through, so port 22 is
+  dropped from off-LAN. `tailscale set --ssh=true` is the fix and needs one command run
+  on the machine. The hub still cannot push to GitHub (R-013) — captures come back over
+  `scp`.
 - **Ring state:** RTC **set** to UTC on 2026-08-09T07:07:01Z. Automatic HR logging
   **enabled at 30-minute intervals** — it ships disabled from the factory, which is why
   the first week recorded nothing.
@@ -152,8 +160,20 @@ the decision to build it; it changes its urgency.
 - Dev happens on the Windows desktop; the hub pulls via git and runs services (systemd
   user units in `hub/systemd/`). **Never assume code executes on the hub.**
 - Portable vs. hub-only: `protocol/` parsers, `hub/db.py`, analytics, and FastAPI routes
-  run identically on Windows and Linux. `hub/sync.py` (BlueZ via bleak) is hub-only and is
-  *expected* to fail immediately on Windows — that is correct behavior, not a bug.
+  run identically on Windows and Linux. **`hub/sync.py` also runs on Windows** —
+  corrected 2026-09-02. It was documented as hub-only and "expected to fail immediately
+  on Windows", which was reasoning about BlueZ; `bleak` has a WinRT backend and the
+  scan, connect and GATT calls are all cross-platform. Verified from the Mississauga
+  desktop: scanned, connected, read the sensing policy and battery, and walked eleven
+  days of log.
+
+  **That makes any machine with a Bluetooth radio an Architecture B satellite**, which
+  was scheduled for session 13 and needs no ESP32 to be useful today. Point
+  `RAVENX_DATA_DIR` at a separate local store, sync there, and merge later — safe by
+  construction, because `samples`' primary key `(source_id, metric, ts_utc)` makes
+  re-ingesting identical readings a no-op. This does not retire the firmware work, which
+  `PLAN.md` says is wanted for its own sake; it removes the urgency of being away from
+  the hub.
 - **Mullvad VPN runs on the hub** (Abhi's decision, 2026-08-02). LAN sharing must stay
   enabled or SSH and the dashboard break. Mullvad and Tailscale both manage routing —
   plan that interaction deliberately when Tailscale goes in; don't let it surprise a session.

@@ -1,8 +1,12 @@
 # hub_connect.ps1 — open an SSH session to the RavenX hub from the Windows desktop.
 #
-# The hub is on DHCP, so its address moves. This tries the remembered address
-# first, then falls back to sweeping the local /24 for an open SSH port and
-# remembers whatever it finds in ~/.ssh/config under `Host hub`.
+# The hub answers on its TAILNET name from anywhere, which is tried first. The LAN
+# path below only matters when you are on the same network as the hub and Tailscale is
+# off; the hub is on DHCP there, so that path sweeps the local /24 for an open SSH port.
+#
+# Tailnet first is not a preference, it is the only thing that works from another city.
+# The desktop moved to Mississauga on 2026-08-28 while the hub stayed in Montreal, and
+# the previous ordering spent 30 seconds failing over a LAN the hub is not on.
 #
 # Usage:  powershell -ExecutionPolicy Bypass -File tools\hub_connect.ps1
 #         (the desktop shortcut created by tools\install_hub_shortcut.ps1 does this)
@@ -12,6 +16,17 @@ param(
     [string]$HubUser = 'warlock',
     [string]$HubHost,
     [string]$RemoteDir = '/srv/ravenx/repo',
+    # MagicDNS name. Stable across address changes, which the DHCP address never was.
+    # Always the FQDN, never the bare node name. This desktop's own Windows hostname is
+    # also WARLOCK, so bare `warlock` resolves to the local machine before MagicDNS is
+    # consulted -- you connect to yourself and the failure is baffling.
+    #
+    # Do not rename the node in the Tailscale admin console. The MagicDNS name is what
+    # Tailscale Serve holds its certificate for, so a rename leaves Serve listening on
+    # 443 with a certificate for a hostname that no longer exists: the port accepts, the
+    # handshake fails, and the phone keeps painting a CACHED shell so the hub still looks
+    # alive. Cost an hour on 2026-09-02.
+    [string]$TailnetHost = 'warlock.tail41f2a1.ts.net',
     [switch]$NoSweep
 )
 
@@ -127,7 +142,7 @@ function Find-HubBySweep {
 
 # --- resolve an address -------------------------------------------------------
 
-$candidates = @($HubHost, (Get-RememberedHost), '10.0.0.213') |
+$candidates = @($HubHost, $TailnetHost, (Get-RememberedHost), '10.0.0.213') |
     Where-Object { $_ } | Select-Object -Unique
 
 $target = $null
@@ -157,14 +172,28 @@ if (-not $target -and -not $NoSweep) {
 if (-not $target) {
     Write-Host ''
     Write-Host 'Hub not reachable.' -ForegroundColor Red
-    Write-Host 'Check: hub powered and awake, on 5 GHz WiFi, Mullvad LAN sharing still enabled.'
+    Write-Host 'Check, in this order:'
+    Write-Host '  1. Is Tailscale running here?  tailscale status'
+    Write-Host '  2. Does the dashboard load on your phone? If yes, the hub is fine and this'
+    Write-Host '     desktop is the problem.'
+    Write-Host '  3. If the phone cannot reach it either, the hub is likely sitting at its LUKS'
+    Write-Host '     passphrase prompt after a reboot (Bug_Backlog R-020). Nothing remote fixes'
+    Write-Host '     that -- someone has to type it at the keyboard.'
+    Write-Host '  4. Only if you are on the same network: 5 GHz WiFi, Mullvad LAN sharing on.'
     Read-Host 'Press Enter to close'
     exit 1
 }
 
-if ((Get-RememberedHost) -ne $target) {
-    Set-RememberedHost $target
-    Write-Host "Remembered $target as '$Alias' in ~/.ssh/config" -ForegroundColor DarkGray
+# Only ever remember the tailnet name. A swept LAN address is correct for exactly as
+# long as you stay on that network, and writing one into `Host hub` would silently break
+# `ssh hub` the next time you travel -- which is the failure this script just had.
+if ($target -eq $TailnetHost) {
+    if ((Get-RememberedHost) -ne $TailnetHost) {
+        Set-RememberedHost $TailnetHost
+        Write-Host "Remembered $TailnetHost as '$Alias' in ~/.ssh/config" -ForegroundColor DarkGray
+    }
+} elseif ((Get-RememberedHost) -ne $TailnetHost) {
+    Write-Host "Connected over the LAN; leaving '$Alias' alone so it stays portable." -ForegroundColor DarkGray
 }
 
 $dest = '{0}@{1}' -f $HubUser, $target

@@ -1,0 +1,84 @@
+{
+  "captured_utc": "2026-09-02T07:04:02.886588+00:00",
+  "ring": {
+    "name": "R06_D29C",
+    "address": "81:5F:4A:87:D2:9C"
+  },
+  "note": "Factory-virgin R06: RTC never set at capture time. Clock NOT written.",
+  "command": {
+    "name": "CMD_READ_HEART_RATE",
+    "value": 21
+  },
+  "probes": [
+    {
+      "label": "UTC midnight -0d (2026-09-02)",
+      "requested_ts": 1788307200,
+      "frame_count": 0,
+      "frames": [],
+      "error": "BleakDeviceNotFoundError: Device with address 81:5F:4A:87:D2:9C was not found."
+    },
+    {
+      "label": "UTC midnight -1d (2026-09-01)",
+      "requested_ts": 1788220800,
+      "frame_count": 0,
+      "frames": [],
+      "error": "BleakDeviceNotFoundError: Device with address 81:5F:4A:87:D2:9C was not found."
+    },
+    {
+      "label": "UTC midnight -2d (2026-08-31)",
+      "requested_ts": 1788134400,
+      "frame_count": 0,
+      "frames": [],
+      "error": "BleakDeviceNotFoundError: Device with address 81:5F:4A:87:D2:9C was not found."
+    },
+    {
+      "label": "UTC midnight -3d (2026-08-30)",
+      "requested_ts": 1788048000,
+      "frame_count": 0,
+      "frames": [],
+      "error": "BleakDeviceNotFoundError: Device with address 81:5F:4A:87:D2:9C was not found."
+    },
+    {
+      "label": "UTC midnight -4d (2026-08-29)",
+      "requested_ts": 1787961600,
+      "frame_count": 0,
+      "frames": [],
+      "error": "BleakDeviceNotFoundError: Device with address 81:5F:4A:87:D2:9C was not found."
+    },
+    {
+      "label": "UTC midnight -5d (2026-08-28)",
+      "requested_ts": 1787875200,
+      "frame_count": 0,
+      "frames": [],
+      "error": "BleakDeviceNotFoundError: Device with address 81:5F:4A:87:D2:9C was not found."
+    },
+    {
+      "label": "UTC midnight -6d (2026-08-27)",
+      "requested_ts": 1787788800,
+      "frame_count": 0,
+      "frames": [],
+      "error": "BleakDeviceNotFoundError: Device with address 81:5F:4A:87:D2:9C was not found."
+    },
+    {
+      "label": "UTC midnight -7d (2026-08-26)",
+      "requested_ts": 1787702400,
+      "frame_count": 0,
+      "frames": [],
+      "error": "BleakDeviceNotFoundError: Device with address 81:5F:4A:87:D2:9C was not found."
+    },
+    {
+      "label": "UTC midnight -8d (2026-08-25)",
+      "requested_ts": 1787616000,
+      "frame_count": 0,
+      "frames": [],
+      "error": "BleakDeviceNotFoundError: Device with address 81:5F:4A:87:D2:9C was not found."
+    },
+    {
+      "label": "factory epoch 1970-01-01 +0d",
+      "requested_ts": 0,
+      "frame_count": 0,
+      "frames": [],
+      "error": "BleakDeviceNotFoundError: Device with address 81:5F:4A:87:D2:9C was not found."
+    }
+  ]
+}
